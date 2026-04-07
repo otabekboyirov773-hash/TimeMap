@@ -1,259 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
-<meta charset="utf-8" />
-<title>TimeMap</title>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMap PRO</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
 body { margin:0; font-family:sans-serif; }
+
+/* MAP */
 #map { height:100vh; }
 
-/* 🔥 INTRO */
-#intro{
-  position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
-  background:#000;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:20px;
-  z-index:9999;
+/* PANEL */
+.panel {
+position:absolute;
+top:10px;
+left:10px;
+z-index:1000;
+background:white;
+padding:12px;
+border-radius:15px;
+box-shadow:0 5px 20px rgba(0,0,0,0.2);
+width:260px;
+animation:fadeIn 0.8s;
 }
 
-/* BUTTONS */
-.controls{
-  position:fixed;
-  top:10px;
-  left:10px;
-  z-index:999;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
+/* INPUT */
+input {
+width:100%;
+padding:8px;
+border-radius:8px;
+border:1px solid #ccc;
+margin-bottom:6px;
 }
 
-button{
-  padding:8px;
-  border:none;
-  border-radius:8px;
-  background:#111;
-  color:#fff;
-  cursor:pointer;
+/* BUTTON */
+button {
+width:100%;
+padding:8px;
+border:none;
+border-radius:8px;
+margin-top:5px;
+cursor:pointer;
+font-weight:bold;
+transition:0.3s;
 }
 
-/* SEARCH */
-#search{
-  position:fixed;
-  top:10px;
-  right:10px;
-  z-index:999;
-  padding:8px;
-  border-radius:8px;
-  border:none;
+button:hover {
+transform:scale(1.05);
 }
 
-/* 🔥 POPUP BOX */
-#notify{
-  position:fixed;
-  bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
-  background:#111;
-  color:#fff;
-  padding:10px 15px;
-  border-radius:10px;
-  display:none;
-  z-index:9999;
+.btn1 { background:#4CAF50; color:white; }
+.btn2 { background:#2196F3; color:white; }
+.btn3 { background:#ff5722; color:white; }
+.btn4 { background:#9c27b0; color:white; }
+
+/* POPUP */
+.popup-img {
+width:100%;
+border-radius:10px;
+margin-top:6px;
 }
+
+/* ANIMATION */
+@keyframes fadeIn {
+from {opacity:0; transform:translateY(-20px);}
+to {opacity:1; transform:translateY(0);}
+}
+
 </style>
 </head>
 
 <body>
 
-<!-- 🔥 INTRO -->
-<div id="intro">😳 Sizga eng yaqin joylarni topyapmiz...</div>
-
-<!-- 🔥 NOTIFICATION -->
-<div id="notify"></div>
-
-<input id="search" placeholder="🔍 Qidir...">
-
-<div class="controls">
-<button onclick="showTop()">🔥 Top 5</button>
-<button onclick="showMosque()">🕌 Masjid</button>
-<button onclick="showFood()">🍔 Ovqat</button>
-<button onclick="showShop()">🛒 Do‘kon</button>
-<button onclick="showAll()">🌍 Hammasi</button>
+<div class="panel">
+<input type="text" placeholder="🔍 Qidiruv..." oninput="search(this.value)">
+<button class="btn1" onclick="challenge()">🎯 Challenge</button>
+<button class="btn2" onclick="findNearest()">📍 Yaqin joy</button>
+<button class="btn3" onclick="showTop()">🔥 Top joylar</button>
+<button class="btn4" onclick="showAll()">🌍 Hammasi</button>
 </div>
 
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
 
-const map = L.map('map').setView([41.3111,69.2797], 12);
+// 🌍 MAP INIT
+const map = L.map('map').setView([41.3,69.2],6);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19
-}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
+// 🔗 SHEET URL (SENIKI)
+const MAIN_URL = "https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/Sheet1";
+const EXTRA_URL = "https://opensheet.elk.sh/1W0z-nLeC3VEmDn00N5T2UxFoEl0g5bwGze55flXcAlw/Sheet1";
+
+let mainData = [];
+let extraData = [];
 let markers = [];
 
-const places = [
-{Name:"Minor Mosque",Lat:41.3485,Lng:69.2890,Type:"masjid",Emoji:"🕌",Description:"Mashhur masjid"},
-{Name:"Korzinka",Lat:41.3111,Lng:69.2797,Type:"shop",Emoji:"🛒",Description:"Supermarket"},
-{Name:"Havas",Lat:41.3200,Lng:69.3000,Type:"shop",Emoji:"🛒",Description:"Arzon do‘kon"},
-{Name:"Cafe",Lat:41.3050,Lng:69.2500,Type:"food",Emoji:"🍔",Description:"Mazali ovqat"},
-{Name:"Park",Lat:41.3150,Lng:69.2700,Type:"place",Emoji:"🌳",Description:"Dam olish joyi"}
-];
+// 📡 LOAD DATA
+Promise.all([
+fetch(MAIN_URL).then(r=>r.json()),
+fetch(EXTRA_URL).then(r=>r.json())
+]).then(([main, extra])=>{
 
-// 🔥 NOTIFY FUNCTION
-function showNotify(text){
-  const box = document.getElementById("notify");
-  box.innerText = text;
-  box.style.display = "block";
+mainData = main.map(m=>({
+...m,
+Lat: parseFloat(m.Lat),
+Lng: parseFloat(m.Lng),
+Views: Number(m.Views)||0,
+Rating: Number(m.Rating)||0
+}));
 
-  setTimeout(()=>{ box.style.display="none"; },2000);
-}
+extraData = extra;
 
-// DISTANCE
-function getDistance(a,b,c,d){
-return Math.sqrt((a-c)**2 + (b-d)**2);
-}
+render(mainData);
 
-// TOP 5
-function getTopPlaces(lat,lng){
-return places
-.map(p=>({...p,dist:getDistance(lat,lng,p.Lat,p.Lng)}))
-.sort((a,b)=>a.dist-b.dist)
-.slice(0,5);
-}
+});
 
-// CLEAR
-function clearMarkers(){
+// 🎯 RENDER FUNCTION
+function render(data){
+
 markers.forEach(m=>map.removeLayer(m));
-markers=[];
-}
+markers = [];
 
-// ROUTE
-function goRoute(lat,lng){
-window.open(`https://www.google.com/maps?q=${lat},${lng}`);
-}
+data.forEach(m=>{
 
-// NAMOZ
-function loadPrayer(id,lat,lng){
-fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`)
-.then(r=>r.json())
-.then(d=>{
-const t=d.data.timings;
-document.getElementById(id).innerHTML =
-"🕌 Bomdod: "+t.Fajr+"<br>"+
-"Peshin: "+t.Dhuhr+"<br>"+
-"Asr: "+t.Asr;
-});
-}
+if(!m.Lat || !m.Lng) return;
 
-// RENDER
-function render(list){
-clearMarkers();
+const e = extraData.find(x=>String(x.ID) === String(m.ID)) || {};
 
-list.forEach(p=>{
-const id = "pr_"+p.Name.replace(/\s/g,'');
+const marker = L.marker([m.Lat, m.Lng]).addTo(map);
 
-const marker = L.marker([p.Lat,p.Lng]).addTo(map)
-.bindPopup(`
-${p.Emoji} <b>${p.Name}</b><br>
-${p.Description}<br><br>
+marker.bindPopup(`
+<b>${m.Name}</b><br>
 
-<button onclick="goRoute(${p.Lat},${p.Lng})">🚗 Borish</button><br><br>
+⭐ ${m.Rating} (${m.ReviewsCount||0})<br>
+👀 ${m.Views}<br>
 
-${p.Type==="masjid" ? `<div id="${id}">⏳ Yuklanmoqda...</div>` : ""}
+${m.Access==="yes"?"♿ Qulay<br>":""}
+${e.Secret==="yes"?"😳 Secret joy<br>":""}
 
-<br>🔥 Trend joy
-<br>👀 ${Math.floor(Math.random()*50)} kishi ko‘ryapti
-`)
-.on('click',()=>{
-if(p.Type==="masjid"){
-loadPrayer(id,p.Lat,p.Lng);
-}
-});
+<p>${m.Description || ""}</p>
+
+<img src="${m.OldImage}" class="popup-img">
+
+<a href="https://www.google.com/maps/dir/?api=1&destination=${m.Lat},${m.Lng}" target="_blank">
+🚗 Borish yo‘li
+</a>
+`);
 
 markers.push(marker);
+
 });
+
 }
 
-// FILTER
-function showAll(){ render(places); }
-function showMosque(){ render(places.filter(p=>p.Type==="masjid")); }
-function showFood(){ render(places.filter(p=>p.Type==="food")); }
-function showShop(){ render(places.filter(p=>p.Type==="shop")); }
+// 🔍 SEARCH
+function search(q){
 
-function showTop(){
-navigator.geolocation.getCurrentPosition(pos=>{
-const top = getTopPlaces(pos.coords.latitude,pos.coords.longitude);
-render(top);
-});
-}
+q = q.toLowerCase();
 
-// SEARCH
-document.getElementById("search").addEventListener("input",function(e){
-const val = e.target.value.toLowerCase();
-
-const filtered = places.filter(p =>
-p.Name.toLowerCase().includes(val)
+const result = mainData.filter(p =>
+(p.Name||"").toLowerCase().includes(q) ||
+(p.City||"").toLowerCase().includes(q) ||
+(p.Category||"").toLowerCase().includes(q)
 );
 
-render(filtered);
-});
+render(result);
 
-// USER LOCATION
+}
+
+// 🎯 CHALLENGE
+function challenge(){
+
+const random = mainData[Math.floor(Math.random()*mainData.length)];
+
+map.setView([random.Lat, random.Lng],14);
+
+alert("🎯 Bugungi challenge:\n" + random.Name);
+
+}
+
+// 📍 NEAREST
+function findNearest(){
+
 navigator.geolocation.getCurrentPosition(pos=>{
+
 const lat = pos.coords.latitude;
 const lng = pos.coords.longitude;
 
-map.setView([lat,lng],14);
+function dist(a){
+return Math.sqrt((a.Lat-lat)**2 + (a.Lng-lng)**2);
+}
 
-L.marker([lat,lng]).addTo(map)
-.bindPopup("📍 Siz shu yerdasiz")
-.openPopup();
+const nearest = mainData.sort((a,b)=>dist(a)-dist(b))[0];
 
-showTop();
+map.setView([nearest.Lat, nearest.Lng],14);
 
-// 🔥 WOW NOTIFY
-setTimeout(()=>showNotify("🔥 Sizga eng yaqin joylar topildi"),1500);
-setTimeout(()=>showNotify("😳 Siz shu hududdasiz"),3000);
-setTimeout(()=>showNotify("🎁 Sizga maxfiy joylar ochildi"),4500);
+alert("📍 Sizga yaqin joy:\n" + nearest.Name);
+
 });
 
-// 🔥 INTRO HIDE
-setTimeout(()=>{
-document.getElementById("intro").style.display="none";
-},2000);
+}
 
-// 🔥 LIVE USERS
-setInterval(()=>{
-const lat = 41.3 + (Math.random()-0.5)*0.1;
-const lng = 69.2 + (Math.random()-0.5)*0.1;
+// 🔥 TOP
+function showTop(){
 
-L.circleMarker([lat,lng],{radius:5})
-.addTo(map)
-.bindPopup("👀 Foydalanuvchi shu yerda");
+const top = [...mainData].sort((a,b)=>b.Views - a.Views).slice(0,10);
 
-},3000);
+render(top);
 
-// 🔥 RANDOM NOTIFY
-setInterval(()=>{
-const msgs = [
-"🔥 12 kishi shu joyni ko‘ryapti",
-"👀 Yangi user kirdi",
-"📍 Yangi joy qo‘shildi"
-];
-showNotify(msgs[Math.floor(Math.random()*msgs.length)]);
-},6000);
+}
+
+// 🌍 SHOW ALL
+function showAll(){
+render(mainData);
+}
 
 </script>
 
