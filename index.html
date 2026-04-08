@@ -3,100 +3,128 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap AI PRO</title>
+
+<title>TimeMap PRO MAX</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 
 <style>
-body { margin:0; font-family:sans-serif; }
-#map { height:100vh; }
+body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
+#map{height:100vh;}
 
 .panel{
-position:absolute;
-top:10px;
-left:10px;
-z-index:1000;
-background:white;
-padding:12px;
-border-radius:15px;
-box-shadow:0 5px 20px rgba(0,0,0,0.2);
-width:270px;
+position:absolute;top:10px;left:10px;z-index:1000;
+background:rgba(255,255,255,0.08);
+backdrop-filter:blur(15px);
+padding:12px;border-radius:15px;
+width:300px;
 }
 
-input{width:100%;padding:8px;margin-bottom:5px;}
-button{width:100%;padding:8px;margin-top:5px;border:none;border-radius:8px;cursor:pointer;}
+input,button{
+width:100%;margin-top:6px;padding:9px;
+border-radius:10px;border:none;
+}
+
+button{background:#22c55e;color:white;cursor:pointer;}
+
 .popup-img{width:100%;border-radius:10px;margin-top:5px;}
+.premium{color:gold;font-weight:bold;}
 </style>
 </head>
 
 <body>
 
 <div class="panel">
-<input type="text" placeholder="🔍 Qidiruv..." oninput="search(this.value)">
+<input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
+<button onclick="topNearby()">📍 Yaqin Top 5</button>
 <button onclick="challenge()">🎯 Challenge</button>
-<button onclick="findNearest()">📍 Yaqin joy</button>
-<button onclick="showTop()">🔥 Top</button>
 <button onclick="aiRecommend()">🤖 AI</button>
-<button onclick="login()">👤 Login</button>
+<button onclick="showTop()">🔥 Top</button>
+<button onclick="showLevel()">🏆 Level</button>
 </div>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
 <script>
 
-const map = L.map('map').setView([41.3,69.2],6);
+const map=L.map('map').setView([41.3,69.2],6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-const MAIN_URL = "https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
-const EXTRA_URL = "https://opensheet.elk.sh/1W0z-nLeC3VEmDn00N5T2UxFoEl0g5bwGze55flXcAlw/1";
+let routingControl;
 
-let mainData=[], extraData=[], markers=[];
+const URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
 
-Promise.all([
-fetch(MAIN_URL).then(r=>r.json()),
-fetch(EXTRA_URL).then(r=>r.json())
-]).then(([main,extra])=>{
+let data=[],markers=[];
 
-mainData = main.map(m=>({
-...m,
-Lat:parseFloat(m.Lat),
-Lng:parseFloat(m.Lng),
-Views:Number(m.Views)||0,
-Rating:Number(m.Rating)||0
-}));
-
-extraData=extra;
-render(mainData);
-
+// LOAD
+fetch(URL).then(r=>r.json()).then(d=>{
+data=d.map(x=>({...x,Lat:+x.Lat,Lng:+x.Lng,Views:+x.Views||0}));
+render(data);
+showAds();
 });
 
 // RENDER
-function render(data){
+function render(arr){
 
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
 
-data.forEach(m=>{
+arr.forEach(p=>{
 
-if(!m.Lat || !m.Lng) return;
+if(!p.Lat) return;
 
-const marker=L.marker([m.Lat,m.Lng]).addTo(map);
+let badge = p.Premium==="yes" ? "🔥 TOP JOY<br>" : "";
 
-marker.bindPopup(`
-<b>${m.Name}</b><br>
-⭐ ${m.Rating} | 👀 ${m.Views}<br>
+const m=L.marker([p.Lat,p.Lng]).addTo(map);
 
-<img src="${m.OldImage || 'https://via.placeholder.com/300'}" class="popup-img">
+m.bindPopup(`
+${badge}
+<b>${p.Name}</b><br>
+👀 ${p.Views}<br>
+
+<img src="${p.OldImage||'https://via.placeholder.com/300'}" class="popup-img">
 
 <br>
-<button onclick="openRoute(${m.Lat},${m.Lng})">🚗 Yo‘l</button>
-<button onclick="like('${m.ID}')">❤️ Like</button>
+<button onclick="route(${p.Lat},${p.Lng})">🚗 Yo‘l</button>
+<button onclick="like('${p.ID}','${p.Category}')">❤️</button>
+<button onclick="share('${p.Name}')">📤</button>
 `);
 
-markers.push(marker);
+m.on('click',()=>increaseViews(p.ID));
+
+markers.push(m);
+
+});
+
+}
+
+// VIEW COUNT
+function increaseViews(id){
+
+let v=JSON.parse(localStorage.getItem("views")||"{}");
+v[id]=(v[id]||0)+1;
+localStorage.setItem("views",JSON.stringify(v));
+
+}
+
+// ROUTE
+function route(lat,lng){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+if(routingControl) map.removeControl(routingControl);
+
+routingControl = L.Routing.control({
+waypoints:[
+L.latLng(pos.coords.latitude,pos.coords.longitude),
+L.latLng(lat,lng)
+]
+}).addTo(map);
 
 });
 
@@ -104,68 +132,115 @@ markers.push(marker);
 
 // SEARCH
 function search(q){
-q=q.toLowerCase().trim();
-if(!q){render(mainData);return;}
-
-render(mainData.filter(p=>
-(p.Name||"").toLowerCase().includes(q) ||
+q=q.toLowerCase();
+render(data.filter(p=>
+(p.Name||"").toLowerCase().includes(q)||
 (p.City||"").toLowerCase().includes(q)
 ));
 }
 
-// ROUTE
-function openRoute(lat,lng){
-window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`);
-}
+// TOP NEARBY
+function topNearby(){
 
-// LIKE
-function like(id){
-let l=JSON.parse(localStorage.getItem("likes")||"{}");
-l[id]=(l[id]||0)+1;
-localStorage.setItem("likes",JSON.stringify(l));
-alert("❤️ Like qo‘shildi!");
-}
-
-// LOGIN
-function login(){
-let n=prompt("Ism:");
-if(n){localStorage.setItem("user",n);}
-}
-
-// CHALLENGE
-function challenge(){
-const r=mainData[Math.floor(Math.random()*mainData.length)];
-map.setView([r.Lat,r.Lng],14);
-alert("🎯 Borib ko‘r: "+r.Name);
-}
-
-// NEAREST
-function findNearest(){
 navigator.geolocation.getCurrentPosition(pos=>{
-const lat=pos.coords.latitude;
-const lng=pos.coords.longitude;
 
-const n=mainData.sort((a,b)=>
-Math.hypot(a.Lat-lat,a.Lng-lng)-Math.hypot(b.Lat-lat,b.Lng-lng)
-)[0];
+let lat=pos.coords.latitude,lng=pos.coords.longitude;
 
-map.setView([n.Lat,n.Lng],14);
-alert("📍 Yaqin: "+n.Name);
+let sorted=data.sort((a,b)=>
+Math.hypot(a.Lat-lat,a.Lng-lng)-
+Math.hypot(b.Lat-lat,b.Lng-lng)
+);
+
+render(sorted.slice(0,5));
+
 });
+
 }
 
-// TOP
-function showTop(){
-render([...mainData].sort((a,b)=>b.Views-a.Views).slice(0,10));
+// LIKE + AI
+function like(id,cat){
+
+let pref=JSON.parse(localStorage.getItem("pref")||"{}");
+pref[cat]=(pref[cat]||0)+1;
+
+localStorage.setItem("pref",JSON.stringify(pref));
+
 }
 
 // AI
 function aiRecommend(){
-const r=mainData[Math.floor(Math.random()*mainData.length)];
+
+let pref=JSON.parse(localStorage.getItem("pref")||"{}");
+
+let fav=Object.keys(pref).sort((a,b)=>pref[b]-pref[a])[0];
+
+let list=data.filter(p=>p.Category===fav);
+
+if(list.length===0) list=data;
+
+let r=list[Math.floor(Math.random()*list.length)];
+
 map.setView([r.Lat,r.Lng],14);
-alert("🤖 Tavsiya: "+r.Name);
+
+alert("🤖 "+r.Name);
+
+}
+
+// CHALLENGE
+function challenge(){
+
+let r=data[Math.floor(Math.random()*data.length)];
+
+let score=Number(localStorage.getItem("score")||0)+20;
+
+localStorage.setItem("score",score);
+
+map.setView([r.Lat,r.Lng],14);
+
+alert(`🎯 ${r.Name}\n🏆 ${score}`);
+
+}
+
+// LEVEL
+function showLevel(){
+
+let score=Number(localStorage.getItem("score")||0);
+
+let level="Bronze";
+if(score>500) level="Silver";
+if(score>1000) level="Gold";
+
+alert(`🏆 ${level}\nBall: ${score}`);
+
+}
+
+// TOP
+function showTop(){
+render([...data].sort((a,b)=>b.Views-a.Views).slice(0,10));
+}
+
+// SHARE
+function share(name){
+navigator.clipboard.writeText("TimeMap: "+name);
+alert("📤 Nusxa olindi");
+}
+
+// ADS
+function showAds(){
+
+let ads=data.filter(p=>p.Premium==="yes");
+
+if(ads.length===0) return;
+
+let r=ads[Math.floor(Math.random()*ads.length)];
+
+setTimeout(()=>{
+alert("🔥 Tavsiya: "+r.Name);
+},3000);
+
 }
 
 </script>
+
 </body>
 </html>
