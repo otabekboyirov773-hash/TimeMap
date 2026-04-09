@@ -4,41 +4,62 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap</title>
+<title>TimeMap PRO</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#111;color:white;}
+body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
-/* TOP BAR */
 .top{
 position:absolute;top:10px;left:10px;right:10px;
 display:flex;gap:5px;z-index:1000;
 }
+
 .top input{
-flex:1;padding:10px;border-radius:10px;border:none;
+flex:1;padding:12px;border-radius:12px;border:none;
 }
 
 /* BUTTONS */
-.menu{
+.bottom{
 position:absolute;bottom:10px;left:10px;right:10px;
-display:flex;gap:5px;z-index:1000;
+display:grid;grid-template-columns:repeat(4,1fr);
+gap:6px;z-index:1000;
 }
-.menu button{
-flex:1;padding:10px;border:none;border-radius:10px;
-background:#22c55e;color:white;
+
+.bottom button{
+padding:10px;border:none;border-radius:12px;
+background:#22c55e;color:white;font-size:12px;
+}
+
+/* CARD UI */
+.card{
+position:absolute;
+bottom:80px;
+left:10px;
+right:10px;
+background:#111;
+padding:10px;
+border-radius:15px;
+display:none;
+z-index:1000;
+}
+
+.card img{
+width:100%;
+border-radius:10px;
 }
 
 /* ADMIN */
 .admin{
 position:absolute;top:60px;left:10px;right:10px;
-background:#222;padding:10px;border-radius:10px;
+background:#111;padding:10px;border-radius:10px;
 display:none;z-index:1000;
 }
+
 .admin input{
-width:100%;margin:3px 0;padding:8px;border-radius:8px;border:none;
+width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
 }
 </style>
 </head>
@@ -47,20 +68,31 @@ width:100%;margin:3px 0;padding:8px;border-radius:8px;border:none;
 
 <div id="map"></div>
 
+<!-- SEARCH -->
 <div class="top">
-<input placeholder="Qidiruv..." oninput="search(this.value)">
+<input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
 </div>
 
-<div class="menu">
-<button onclick="ai()">AI</button>
-<button onclick="nearby()">Nearby</button>
-<button onclick="toggleAdmin()">Admin</button>
+<!-- INFO CARD -->
+<div class="card" id="card"></div>
+
+<!-- BUTTONS -->
+<div class="bottom">
+<button onclick="showNearby()">📍</button>
+<button onclick="smartAI()">🧠</button>
+<button onclick="showTop()">🔥</button>
+<button onclick="openAdmin()">⚙️</button>
 </div>
 
-<!-- ADMIN PANEL -->
+<!-- ADMIN -->
 <div class="admin" id="adminBox">
 
-<h3>ADMIN PANEL</h3>
+<h3>ADMIN</h3>
+
+<input id="adminPass" placeholder="Parol">
+<button onclick="loginAdmin()">Kirish</button>
+
+<div id="adminContent" style="display:none;">
 
 <input id="name" placeholder="Joy nomi">
 <input id="lat" placeholder="Lat">
@@ -69,10 +101,7 @@ width:100%;margin:3px 0;padding:8px;border-radius:8px;border:none;
 
 <button onclick="addPlace()">➕ Qo‘shish</button>
 
-<hr>
-
-<input id="challengeText" placeholder="Challenge yoz">
-<button onclick="saveChallenge()">🎯 Saqlash</button>
+</div>
 
 </div>
 
@@ -88,6 +117,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 let data = JSON.parse(localStorage.getItem("places")||"[]");
 let markers=[];
 
+// IMAGE FIX
+function fixImg(url){
+if(!url) return "https://via.placeholder.com/300";
+url=url.trim();
+url=url.replaceAll("(","%28").replaceAll(")","%29");
+return url;
+}
+
 // RENDER
 function render(arr){
 
@@ -98,10 +135,7 @@ arr.forEach(p=>{
 
 let m=L.marker([p.lat,p.lng]).addTo(map);
 
-m.bindPopup(`
-<b>${p.name}</b>
-<img src="${p.img}" width="100%" onerror="this.src='https://via.placeholder.com/300'">
-`);
+m.on('click',()=>showCard(p));
 
 markers.push(m);
 
@@ -109,9 +143,104 @@ markers.push(m);
 
 }
 
-render(data);
+// CARD
+function showCard(p){
 
-// ADD PLACE (ADMIN)
+let card=document.getElementById("card");
+
+card.style.display="block";
+
+card.innerHTML=`
+<h3>${p.name}</h3>
+<img src="${fixImg(p.img)}" onerror="this.src='https://via.placeholder.com/300'">
+`;
+
+}
+
+// SEARCH
+function search(q){
+q=q.toLowerCase();
+render(data.filter(p=>p.name.toLowerCase().includes(q)));
+}
+
+// 📍 NEARBY
+function showNearby(){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let lat=pos.coords.latitude,lng=pos.coords.longitude;
+
+let sorted=data.sort((a,b)=>
+Math.hypot(a.lat-lat,a.lng-lng)-
+Math.hypot(b.lat-lat,b.lng-lng)
+);
+
+let top5=sorted.slice(0,5);
+
+render(top5);
+
+if(top5[0]) showCard(top5[0]);
+
+});
+
+}
+
+// 🔥 TOP
+function showTop(){
+
+let sorted=[...data].sort(()=>0.5-Math.random()).slice(0,5);
+
+render(sorted);
+
+if(sorted[0]) showCard(sorted[0]);
+
+}
+
+// 🧠 REAL AI
+function smartAI(){
+
+if(data.length===0){
+alert("Ma'lumot yo‘q");
+return;
+}
+
+// 1. random
+let random=data[Math.floor(Math.random()*data.length)];
+
+// 2. top
+let top=[...data].sort(()=>0.5-Math.random())[0];
+
+// 3. mix
+let list=[random,top];
+
+render(list);
+
+showCard(list[0]);
+
+alert("🤖 AI sizga 2 ta joy tavsiya qildi");
+
+}
+
+// ADMIN OPEN
+function openAdmin(){
+document.getElementById("adminBox").style.display="block";
+}
+
+// LOGIN ADMIN
+function loginAdmin(){
+
+let pass=document.getElementById("adminPass").value;
+
+if(pass==="admin123"){
+document.getElementById("adminContent").style.display="block";
+alert("Kirdingiz ✅");
+}else{
+alert("Xato parol ❌");
+}
+
+}
+
+// ADD PLACE
 function addPlace(){
 
 let p={
@@ -127,69 +256,12 @@ localStorage.setItem("places",JSON.stringify(data));
 
 render(data);
 
-alert("Qo‘shildi ✅");
+alert("Qo‘shildi");
 
 }
 
-// SEARCH
-function search(q){
-q=q.toLowerCase();
-render(data.filter(p=>p.name.toLowerCase().includes(q)));
-}
-
-// AI (oddiy ishlaydigan)
-function ai(){
-
-if(data.length===0){
-alert("Joy yo‘q");
-return;
-}
-
-let r=data[Math.floor(Math.random()*data.length)];
-
-map.setView([r.lat,r.lng],14);
-
-alert("AI tavsiya: "+r.name);
-
-}
-
-// NEARBY
-function nearby(){
-
-navigator.geolocation.getCurrentPosition(pos=>{
-
-let lat=pos.coords.latitude,lng=pos.coords.longitude;
-
-let sorted=data.sort((a,b)=>
-Math.hypot(a.lat-lat,a.lng-lng)-
-Math.hypot(b.lat-lat,b.lng-lng)
-);
-
-render(sorted.slice(0,5));
-
-});
-
-}
-
-// ADMIN TOGGLE
-function toggleAdmin(){
-
-let box=document.getElementById("adminBox");
-
-box.style.display = box.style.display==="none" ? "block" : "none";
-
-}
-
-// CHALLENGE SAVE
-function saveChallenge(){
-
-let text=challengeText.value;
-
-localStorage.setItem("challenge",text);
-
-alert("Challenge saqlandi 🎯");
-
-}
+// INIT
+render(data);
 
 </script>
 
