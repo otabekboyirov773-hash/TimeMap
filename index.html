@@ -4,44 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap AI PRO</title>
+<title>TimeMap</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
+body{margin:0;font-family:sans-serif;background:#111;color:white;}
 #map{height:100vh;}
 
-/* TOP */
-.topbar{
-position:absolute;top:10px;left:10px;right:10px;z-index:1000;
-display:flex;gap:5px;
+/* TOP BAR */
+.top{
+position:absolute;top:10px;left:10px;right:10px;
+display:flex;gap:5px;z-index:1000;
 }
-.topbar input{flex:1;padding:10px;border-radius:12px;border:none;}
-
-/* BOTTOM */
-.bottom{
-position:absolute;bottom:0;left:0;right:0;
-background:rgba(15,23,42,0.95);
-display:grid;grid-template-columns:repeat(4,1fr);
-gap:6px;padding:10px;z-index:1000;
-}
-.bottom button{
-padding:10px;border:none;border-radius:12px;
-background:#22c55e;color:white;font-size:12px;
+.top input{
+flex:1;padding:10px;border-radius:10px;border:none;
 }
 
-/* AUTH */
-.auth{
-position:absolute;top:70px;left:10px;right:10px;
-background:rgba(255,255,255,0.1);
-padding:10px;border-radius:15px;z-index:1000;
+/* BUTTONS */
+.menu{
+position:absolute;bottom:10px;left:10px;right:10px;
+display:flex;gap:5px;z-index:1000;
 }
-.auth input{width:100%;margin-top:5px;padding:8px;border-radius:10px;border:none;}
-.auth button{width:100%;margin-top:5px;padding:8px;border-radius:10px;border:none;background:#22c55e;color:white;}
+.menu button{
+flex:1;padding:10px;border:none;border-radius:10px;
+background:#22c55e;color:white;
+}
 
-.popup-img{width:100%;border-radius:10px;margin-top:5px;}
+/* ADMIN */
+.admin{
+position:absolute;top:60px;left:10px;right:10px;
+background:#222;padding:10px;border-radius:10px;
+display:none;z-index:1000;
+}
+.admin input{
+width:100%;margin:3px 0;padding:8px;border-radius:8px;border:none;
+}
 </style>
 </head>
 
@@ -49,204 +47,148 @@ padding:10px;border-radius:15px;z-index:1000;
 
 <div id="map"></div>
 
-<!-- SEARCH -->
-<div class="topbar">
-<input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
+<div class="top">
+<input placeholder="Qidiruv..." oninput="search(this.value)">
 </div>
 
-<!-- LOGIN -->
-<div class="auth">
-<input id="username" placeholder="Username">
-<input id="password" type="password" placeholder="Password">
-<button onclick="register()">Register</button>
-<button onclick="login()">Login</button>
-<p id="userText"></p>
+<div class="menu">
+<button onclick="ai()">AI</button>
+<button onclick="nearby()">Nearby</button>
+<button onclick="toggleAdmin()">Admin</button>
 </div>
 
-<!-- BUTTONS -->
-<div class="bottom">
-<button onclick="topNearby()">📍</button>
-<button onclick="challenge()">🎯</button>
-<button onclick="superAI()">🧠</button>
-<button onclick="surpriseAI()">😳</button>
-<button onclick="toggleHistory()">⏳</button>
-<button onclick="showTop()">🔥</button>
-<button onclick="showLevel()">🏆</button>
-<button onclick="aiLevel()">📊</button>
+<!-- ADMIN PANEL -->
+<div class="admin" id="adminBox">
+
+<h3>ADMIN PANEL</h3>
+
+<input id="name" placeholder="Joy nomi">
+<input id="lat" placeholder="Lat">
+<input id="lng" placeholder="Lng">
+<input id="img" placeholder="Rasm link">
+
+<button onclick="addPlace()">➕ Qo‘shish</button>
+
+<hr>
+
+<input id="challengeText" placeholder="Challenge yoz">
+<button onclick="saveChallenge()">🎯 Saqlash</button>
+
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
 <script>
 
 // MAP
 const map=L.map('map').setView([41.3,69.2],6);
+
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-let data=[],markers=[],routingControl;
-const URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
-
-// LOAD
-fetch(URL).then(r=>r.json()).then(d=>{
-data=d.map(x=>({...x,Lat:+x.Lat,Lng:+x.Lng}));
-render(data);
-});
-
-// IMAGE FIX
-function fixImg(url){
-if(!url) return "https://via.placeholder.com/300";
-return url.trim().replaceAll("(","%28").replaceAll(")","%29");
-}
+let data = JSON.parse(localStorage.getItem("places")||"[]");
+let markers=[];
 
 // RENDER
-let historyMode=false;
-
 function render(arr){
+
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
 
 arr.forEach(p=>{
-if(!p.Lat) return;
 
-let img = historyMode ? p.OldImage : p.NewImage || p.OldImage;
-
-let m=L.marker([p.Lat,p.Lng]).addTo(map);
+let m=L.marker([p.lat,p.lng]).addTo(map);
 
 m.bindPopup(`
-<b>${p.Name}</b>
-<img src="${fixImg(img)}" class="popup-img" onerror="this.src='https://via.placeholder.com/300'">
-
-<button onclick="route(${p.Lat},${p.Lng})">🚗 Yo‘l</button>
+<b>${p.name}</b>
+<img src="${p.img}" width="100%" onerror="this.src='https://via.placeholder.com/300'">
 `);
 
-m.on('click',()=>onPlaceClick(p));
-
 markers.push(m);
+
 });
+
 }
 
-// CLICK
-function onPlaceClick(p){
-let h=JSON.parse(localStorage.getItem("history")||"[]");
-h.push({category:p.Category});
-localStorage.setItem("history",JSON.stringify(h));
-}
+render(data);
 
-// ROUTE
-function route(lat,lng){
-navigator.geolocation.getCurrentPosition(pos=>{
-if(routingControl) map.removeControl(routingControl);
-routingControl=L.Routing.control({
-waypoints:[
-L.latLng(pos.coords.latitude,pos.coords.longitude),
-L.latLng(lat,lng)
-]
-}).addTo(map);
-});
+// ADD PLACE (ADMIN)
+function addPlace(){
+
+let p={
+name:name.value,
+lat:+lat.value,
+lng:+lng.value,
+img:img.value
+};
+
+data.push(p);
+
+localStorage.setItem("places",JSON.stringify(data));
+
+render(data);
+
+alert("Qo‘shildi ✅");
+
 }
 
 // SEARCH
 function search(q){
 q=q.toLowerCase();
-render(data.filter(p=>(p.Name||"").toLowerCase().includes(q)));
+render(data.filter(p=>p.name.toLowerCase().includes(q)));
 }
 
-// NEARBY
-function topNearby(){
-navigator.geolocation.getCurrentPosition(pos=>{
-let lat=pos.coords.latitude,lng=pos.coords.longitude;
-let sorted=data.sort((a,b)=>
-Math.hypot(a.Lat-lat,a.Lng-lng)-Math.hypot(b.Lat-lat,b.Lng-lng)
-);
-render(sorted.slice(0,5));
-});
-}
+// AI (oddiy ishlaydigan)
+function ai(){
 
-// 🧠 SUPER AI 2.0
-function superAI(){
-
-let history=JSON.parse(localStorage.getItem("history")||"[]");
-
-if(history.length===0){
-alert("AI o‘rganmoqda 😅");
+if(data.length===0){
+alert("Joy yo‘q");
 return;
 }
 
-let count={};
-history.forEach(h=>count[h.category]=(count[h.category]||0)+1);
-
-let fav=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
-
-let favList=data.filter(p=>p.Category===fav);
-let trending=[...data].sort((a,b)=>(b.Views||0)-(a.Views||0)).slice(0,5);
-let random=[...data].sort(()=>0.5-Math.random()).slice(0,3);
-
-let final=[...favList.slice(0,2),...trending.slice(0,2),...random];
-
-render(final);
-
-alert("🤖 AI siz uchun joylar topdi");
-
-}
-
-// 😳 SURPRISE
-function surpriseAI(){
 let r=data[Math.floor(Math.random()*data.length)];
-map.setView([r.Lat,r.Lng],14);
-alert("😳 "+r.Name);
+
+map.setView([r.lat,r.lng],14);
+
+alert("AI tavsiya: "+r.name);
+
 }
 
-// 🎯 CHALLENGE
-function challenge(){
-let score=Number(localStorage.getItem("score")||0)+20;
-localStorage.setItem("score",score);
-alert("🏆 "+score);
+// NEARBY
+function nearby(){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let lat=pos.coords.latitude,lng=pos.coords.longitude;
+
+let sorted=data.sort((a,b)=>
+Math.hypot(a.lat-lat,a.lng-lng)-
+Math.hypot(b.lat-lat,b.lng-lng)
+);
+
+render(sorted.slice(0,5));
+
+});
+
 }
 
-// 🏆 LEVEL
-function showLevel(){
-let s=Number(localStorage.getItem("score")||0);
-alert("Score: "+s);
+// ADMIN TOGGLE
+function toggleAdmin(){
+
+let box=document.getElementById("adminBox");
+
+box.style.display = box.style.display==="none" ? "block" : "none";
+
 }
 
-// 🔥 TOP
-function showTop(){
-render([...data].sort((a,b)=>(b.Views||0)-(a.Views||0)).slice(0,10));
-}
+// CHALLENGE SAVE
+function saveChallenge(){
 
-// ⏳ HISTORY
-function toggleHistory(){
-historyMode=!historyMode;
-render(data);
-}
+let text=challengeText.value;
 
-// 📊 AI LEVEL
-function aiLevel(){
-let h=JSON.parse(localStorage.getItem("history")||"[]");
-let level="Beginner";
-if(h.length>10) level="Explorer";
-if(h.length>30) level="Pro";
-if(h.length>60) level="Master";
-alert("AI Level: "+level);
-}
+localStorage.setItem("challenge",text);
 
-// 🔐 AUTH
-function register(){
-let u=username.value,p=password.value;
-let users=JSON.parse(localStorage.getItem("users")||"{}");
-users[u]={password:p,score:0};
-localStorage.setItem("users",JSON.stringify(users));
-alert("Registered");
-}
+alert("Challenge saqlandi 🎯");
 
-function login(){
-let u=username.value,p=password.value;
-let users=JSON.parse(localStorage.getItem("users")||"{}");
-if(users[u] && users[u].password===p){
-localStorage.setItem("user",u);
-userText.innerText="👤 "+u;
-}else alert("Error");
 }
 
 </script>
