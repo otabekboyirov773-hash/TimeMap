@@ -4,41 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap VIRAL AI</title>
+<title>TimeMap Stable</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
+body{margin:0;}
 #map{height:100vh;}
 
-.top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;}
-.top input{width:100%;padding:12px;border-radius:12px;border:none;}
-
-.bottom{
-position:absolute;bottom:10px;left:10px;right:10px;
-display:grid;grid-template-columns:repeat(5,1fr);gap:5px;z-index:1000;
-}
-.bottom button{
-padding:10px;border:none;border-radius:10px;background:#22c55e;color:white;
-}
-
-/* CARD */
-.card{
-position:absolute;bottom:0;left:0;right:0;
-background:#111;padding:15px;border-radius:20px 20px 0 0;
-max-height:65%;overflow:auto;display:none;
-}
-.card img{width:100%;border-radius:12px;margin-top:5px;}
-.card button{
-width:100%;margin-top:6px;padding:10px;border:none;border-radius:10px;background:#22c55e;color:white;
-}
-
-/* POINTS */
-.points{
-position:absolute;top:60px;right:10px;
-background:#22c55e;padding:8px 12px;border-radius:10px;
+.top{
+position:absolute;
+top:10px;
+left:10px;
+right:10px;
 z-index:1000;
+}
+
+.top input{
+width:100%;
+padding:10px;
+border-radius:10px;
+border:none;
+}
+
+.adminBtn{
+position:absolute;
+top:60px;
+right:10px;
+z-index:1000;
+padding:8px;
+background:black;
+color:white;
+border-radius:8px;
 }
 </style>
 </head>
@@ -47,182 +44,58 @@ z-index:1000;
 
 <div id="map"></div>
 
-<div class="points" id="points">⭐ 0</div>
-
 <div class="top">
-<input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
+<input placeholder="Qidiruv..." oninput="search(this.value)">
 </div>
 
-<div class="card" id="card"></div>
-
-<div class="bottom">
-<button onclick="nearby()">📍</button>
-<button onclick="ai()">🧠</button>
-<button onclick="top()">🔥</button>
-<button onclick="challenge()">🎯</button>
-<button onclick="saved()">💾</button>
-</div>
+<button class="adminBtn" onclick="alert('Admin keyin qo‘shamiz')">⚙️</button>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
 // MAP
-const map=L.map('map').setView([41.3,69.2],6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+const map = L.map('map').setView([41.3, 69.2], 6);
 
-// DATA
-const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+maxZoom: 19
+}).addTo(map);
 
-let data=[],markers=[];
-
-// POINTS
-let points=parseInt(localStorage.getItem("points")||0);
-updatePoints();
-
-// LOAD
-fetch(SHEET).then(r=>r.json()).then(d=>{
-data=d.map(x=>({
-name:x.Name,
-lat:+x.Lat,
-lng:+x.Lng,
-img:x.OldImage||x.NewImage
-}));
-render(data);
-});
-
-// IMAGE FIX
-function fixImg(url){
-if(!url) return "https://picsum.photos/400/300";
-return url+"?v="+Date.now();
-}
+// TEST DATA
+let data = [
+{ name:"Toshkent", lat:41.3111, lng:69.2797 },
+{ name:"Samarqand", lat:39.6542, lng:66.9597 },
+{ name:"Buxoro", lat:39.7747, lng:64.4286 }
+];
 
 // RENDER
 function render(arr){
-markers.forEach(m=>map.removeLayer(m));
-markers=[];
+
 arr.forEach(p=>{
-let m=L.marker([p.lat,p.lng]).addTo(map);
-m.on('click',()=>show(p));
-markers.push(m);
-});
-}
-
-// CARD
-function show(p){
-
-navigator.geolocation.getCurrentPosition(pos=>{
-
-let d=dist(pos.coords.latitude,pos.coords.longitude,p.lat,p.lng);
-
-card.innerHTML=`
-<h3>${p.name}</h3>
-
-<img src="${fixImg(p.img)}" onerror="this.src='https://picsum.photos/400/300'">
-
-<p>📏 ${d.toFixed(1)} km</p>
-
-<button onclick="go(${p.lat},${p.lng})">🚗 Borish</button>
-
-<button onclick="share('${p.name}')">📢 Share</button>
-
-<button onclick="like()">❤️ Like</button>
-`;
-
-card.style.display="block";
-
+L.marker([p.lat, p.lng])
+.addTo(map)
+.bindPopup(p.name);
 });
 
-}
-
-// DIST
-function dist(a,b,c,d){
-return Math.sqrt((a-c)**2+(b-d)**2)*111;
-}
-
-// ROUTE
-function go(lat,lng){
-navigator.geolocation.getCurrentPosition(pos=>{
-window.open(`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords.longitude}/${lat},${lng}`);
-});
 }
 
 // SEARCH
 function search(q){
-q=q.toLowerCase();
-render(data.filter(p=>p.name.toLowerCase().includes(q)));
-}
+q = q.toLowerCase();
 
-// NEARBY
-function nearby(){
-navigator.geolocation.getCurrentPosition(pos=>{
-let sorted=[...data].sort((a,b)=>
-dist(pos.coords.latitude,pos.coords.longitude,a.lat,a.lng)-
-dist(pos.coords.latitude,pos.coords.longitude,b.lat,b.lng)
+let filtered = data.filter(p =>
+p.name.toLowerCase().includes(q)
 );
-render(sorted.slice(0,5));
+
+map.eachLayer(layer=>{
+if(layer instanceof L.Marker) map.removeLayer(layer);
 });
+
+render(filtered);
 }
 
-// AI
-function ai(){
-nearby();
-alert("🤖 AI tavsiya berdi");
-}
-
-// TOP
-function top(){
-render([...data].sort(()=>0.5-Math.random()).slice(0,5));
-}
-
-// LIKE
-function like(){
-addPoints(1);
-alert("❤️ +1 ball");
-}
-
-// SHARE (VIRAL)
-function share(name){
-
-let text=`Men ${name} joyni TimeMap orqali topdim 🔥`;
-
-if(navigator.share){
-navigator.share({text});
-}else{
-navigator.clipboard.writeText(text);
-alert("Copy qilindi");
-}
-
-addPoints(5);
-
-}
-
-// CHALLENGE
-function challenge(){
-
-let c="Bugun 2 ta yangi joyga boring 🔥";
-
-alert("🎯 "+c);
-
-addPoints(10);
-
-}
-
-// SAVE
-function saved(){
-alert("Saqlangan joylar tez orada 🔥");
-}
-
-// POINTS
-function addPoints(p){
-points+=p;
-localStorage.setItem("points",points);
-updatePoints();
-}
-
-function updatePoints(){
-document.getElementById("points").innerText="⭐ "+points;
-}
+// START
+render(data);
 
 </script>
 
