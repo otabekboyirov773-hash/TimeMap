@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap PRO</title>
+<title>TimeMap PRO MAX</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
@@ -21,7 +21,6 @@ display:flex;gap:5px;z-index:1000;
 flex:1;padding:12px;border-radius:12px;border:none;
 }
 
-/* BUTTONS */
 .bottom{
 position:absolute;bottom:10px;left:10px;right:10px;
 display:grid;grid-template-columns:repeat(4,1fr);
@@ -33,34 +32,21 @@ padding:10px;border:none;border-radius:12px;
 background:#22c55e;color:white;font-size:12px;
 }
 
-/* CARD UI */
 .card{
-position:absolute;
-bottom:80px;
-left:10px;
-right:10px;
-background:#111;
-padding:10px;
-border-radius:15px;
-display:none;
-z-index:1000;
+position:absolute;bottom:80px;left:10px;right:10px;
+background:#111;padding:10px;border-radius:15px;
+display:none;z-index:1000;
 }
 
-.card img{
-width:100%;
-border-radius:10px;
-}
+.card img{width:100%;border-radius:10px;}
 
-/* ADMIN */
 .admin{
 position:absolute;top:60px;left:10px;right:10px;
 background:#111;padding:10px;border-radius:10px;
 display:none;z-index:1000;
 }
 
-.admin input{
-width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
-}
+.admin input{width:100%;margin:4px 0;padding:8px;border:none;border-radius:8px;}
 </style>
 </head>
 
@@ -68,15 +54,12 @@ width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
 
 <div id="map"></div>
 
-<!-- SEARCH -->
 <div class="top">
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
 </div>
 
-<!-- INFO CARD -->
 <div class="card" id="card"></div>
 
-<!-- BUTTONS -->
 <div class="bottom">
 <button onclick="showNearby()">📍</button>
 <button onclick="smartAI()">🧠</button>
@@ -84,15 +67,17 @@ width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
 <button onclick="openAdmin()">⚙️</button>
 </div>
 
-<!-- ADMIN -->
 <div class="admin" id="adminBox">
-
-<h3>ADMIN</h3>
 
 <input id="adminPass" placeholder="Parol">
 <button onclick="loginAdmin()">Kirish</button>
 
 <div id="adminContent" style="display:none;">
+
+<input id="newPass" placeholder="Yangi parol">
+<button onclick="changePass()">🔐 Parolni o‘zgartir</button>
+
+<hr>
 
 <input id="name" placeholder="Joy nomi">
 <input id="lat" placeholder="Lat">
@@ -102,7 +87,6 @@ width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
 <button onclick="addPlace()">➕ Qo‘shish</button>
 
 </div>
-
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -111,18 +95,44 @@ width:100%;margin:4px 0;padding:8px;border-radius:8px;border:none;
 
 // MAP
 const map=L.map('map').setView([41.3,69.2],6);
-
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-let data = JSON.parse(localStorage.getItem("places")||"[]");
+// 🔗 SHEET
+const SHEET_URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+
+let sheetData=[];
+let localData=JSON.parse(localStorage.getItem("places")||"[]");
+let data=[];
 let markers=[];
+
+// LOAD SHEET
+fetch(SHEET_URL)
+.then(r=>r.json())
+.then(d=>{
+sheetData=d.map(x=>({
+name:x.Name,
+lat:+x.Lat,
+lng:+x.Lng,
+img:x.OldImage || x.NewImage,
+category:x.Category,
+views:+x.Views||0
+}));
+
+mergeData();
+})
+.catch(()=>mergeData());
+
+// MERGE
+function mergeData(){
+data=[...sheetData,...localData];
+render(data);
+setTimeout(showNearby,2000);
+}
 
 // IMAGE FIX
 function fixImg(url){
 if(!url) return "https://via.placeholder.com/300";
-url=url.trim();
-url=url.replaceAll("(","%28").replaceAll(")","%29");
-return url;
+return url.trim().replaceAll("(","%28").replaceAll(")","%29");
 }
 
 // RENDER
@@ -132,13 +142,13 @@ markers.forEach(m=>map.removeLayer(m));
 markers=[];
 
 arr.forEach(p=>{
+if(!p.lat) return;
 
 let m=L.marker([p.lat,p.lng]).addTo(map);
 
 m.on('click',()=>showCard(p));
 
 markers.push(m);
-
 });
 
 }
@@ -160,7 +170,7 @@ card.innerHTML=`
 // SEARCH
 function search(q){
 q=q.toLowerCase();
-render(data.filter(p=>p.name.toLowerCase().includes(q)));
+render(data.filter(p=>(p.name||"").toLowerCase().includes(q)));
 }
 
 // 📍 NEARBY
@@ -170,7 +180,7 @@ navigator.geolocation.getCurrentPosition(pos=>{
 
 let lat=pos.coords.latitude,lng=pos.coords.longitude;
 
-let sorted=data.sort((a,b)=>
+let sorted=[...data].sort((a,b)=>
 Math.hypot(a.lat-lat,a.lng-lng)-
 Math.hypot(b.lat-lat,b.lng-lng)
 );
@@ -188,9 +198,9 @@ if(top5[0]) showCard(top5[0]);
 // 🔥 TOP
 function showTop(){
 
-let sorted=[...data].sort(()=>0.5-Math.random()).slice(0,5);
+let sorted=[...data].sort((a,b)=>(b.views||0)-(a.views||0));
 
-render(sorted);
+render(sorted.slice(0,5));
 
 if(sorted[0]) showCard(sorted[0]);
 
@@ -200,43 +210,75 @@ if(sorted[0]) showCard(sorted[0]);
 function smartAI(){
 
 if(data.length===0){
-alert("Ma'lumot yo‘q");
+alert("Data yo‘q ❌");
 return;
 }
 
-// 1. random
-let random=data[Math.floor(Math.random()*data.length)];
+// USER HISTORY
+let history=JSON.parse(localStorage.getItem("history")||"[]");
 
-// 2. top
-let top=[...data].sort(()=>0.5-Math.random())[0];
+let favCat=null;
 
-// 3. mix
-let list=[random,top];
+if(history.length>0){
 
-render(list);
+let count={};
 
-showCard(list[0]);
+history.forEach(h=>{
+count[h]=(count[h]||0)+1;
+});
 
-alert("🤖 AI sizga 2 ta joy tavsiya qildi");
+favCat=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
 
 }
 
-// ADMIN OPEN
+// FILTER
+let list=favCat ? data.filter(p=>p.category===favCat) : data;
+
+// MIX
+let result=[...list].sort(()=>0.5-Math.random()).slice(0,5);
+
+render(result);
+
+showCard(result[0]);
+
+alert("🤖 AI sizga mos 5 ta joy topdi");
+
+}
+
+// SAVE HISTORY
+function saveHistory(cat){
+
+let h=JSON.parse(localStorage.getItem("history")||"[]");
+
+h.push(cat);
+
+localStorage.setItem("history",JSON.stringify(h));
+
+}
+
+// ADMIN
 function openAdmin(){
 document.getElementById("adminBox").style.display="block";
 }
 
-// LOGIN ADMIN
+// PASSWORD
+let adminPassword=localStorage.getItem("adminPass")||"admin123";
+
 function loginAdmin(){
 
-let pass=document.getElementById("adminPass").value;
+if(adminPass.value===adminPassword){
+adminContent.style.display="block";
+}else alert("Xato ❌");
 
-if(pass==="admin123"){
-document.getElementById("adminContent").style.display="block";
-alert("Kirdingiz ✅");
-}else{
-alert("Xato parol ❌");
 }
+
+function changePass(){
+
+adminPassword=newPass.value;
+
+localStorage.setItem("adminPass",adminPassword);
+
+alert("Parol o‘zgardi 🔐");
 
 }
 
@@ -250,18 +292,15 @@ lng:+lng.value,
 img:img.value
 };
 
-data.push(p);
+localData.push(p);
 
-localStorage.setItem("places",JSON.stringify(data));
+localStorage.setItem("places",JSON.stringify(localData));
 
-render(data);
+mergeData();
 
-alert("Qo‘shildi");
+alert("Qo‘shildi ✅");
 
 }
-
-// INIT
-render(data);
 
 </script>
 
