@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap PRO MAX</title>
+<title>TimeMap VIRAL AI</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
@@ -12,51 +12,42 @@
 body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
-/* TOP */
-.top{
-position:absolute;top:10px;left:10px;right:10px;
-display:flex;gap:5px;z-index:1000;
-}
-.top input{
-flex:1;padding:12px;border-radius:12px;border:none;
-}
+.top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;}
+.top input{width:100%;padding:12px;border-radius:12px;border:none;}
 
-/* BOTTOM */
 .bottom{
 position:absolute;bottom:10px;left:10px;right:10px;
-display:grid;grid-template-columns:repeat(5,1fr);
-gap:6px;z-index:1000;
+display:grid;grid-template-columns:repeat(5,1fr);gap:5px;z-index:1000;
 }
 .bottom button{
-padding:10px;border:none;border-radius:12px;
-background:#22c55e;color:white;font-size:12px;
+padding:10px;border:none;border-radius:10px;background:#22c55e;color:white;
 }
 
 /* CARD */
 .card{
 position:absolute;bottom:0;left:0;right:0;
-background:#111;padding:15px;
-border-radius:20px 20px 0 0;
-display:none;z-index:1000;
-max-height:50%;overflow:auto;
-animation:up 0.3s;
+background:#111;padding:15px;border-radius:20px 20px 0 0;
+max-height:65%;overflow:auto;display:none;
 }
-@keyframes up{from{transform:translateY(100%);}to{transform:translateY(0);}}
 .card img{width:100%;border-radius:12px;margin-top:5px;}
-
-/* ADMIN */
-.admin{
-position:absolute;top:60px;left:10px;right:10px;
-background:#111;padding:10px;border-radius:10px;
-display:none;z-index:1000;
+.card button{
+width:100%;margin-top:6px;padding:10px;border:none;border-radius:10px;background:#22c55e;color:white;
 }
-.admin input{width:100%;margin:4px 0;padding:8px;border:none;border-radius:8px;}
+
+/* POINTS */
+.points{
+position:absolute;top:60px;right:10px;
+background:#22c55e;padding:8px 12px;border-radius:10px;
+z-index:1000;
+}
 </style>
 </head>
 
 <body>
 
 <div id="map"></div>
+
+<div class="points" id="points">⭐ 0</div>
 
 <div class="top">
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
@@ -65,33 +56,11 @@ display:none;z-index:1000;
 <div class="card" id="card"></div>
 
 <div class="bottom">
-<button onclick="showNearby()">📍</button>
-<button onclick="smartAI()">🧠</button>
-<button onclick="showTop()">🔥</button>
-<button onclick="autoAdd()">🤖</button>
-<button onclick="openAdmin()">⚙️</button>
-</div>
-
-<div class="admin" id="adminBox">
-
-<input id="adminPass" placeholder="Parol">
-<button onclick="loginAdmin()">Kirish</button>
-
-<div id="adminContent" style="display:none;">
-
-<input id="newPass" placeholder="Yangi parol">
-<button onclick="changePass()">🔐 Parolni o‘zgartir</button>
-
-<hr>
-
-<input id="name" placeholder="Joy nomi">
-<input id="lat" placeholder="Lat">
-<input id="lng" placeholder="Lng">
-<input id="img" placeholder="Rasm link">
-
-<button onclick="addPlace()">➕ Qo‘shish</button>
-
-</div>
+<button onclick="nearby()">📍</button>
+<button onclick="ai()">🧠</button>
+<button onclick="top()">🔥</button>
+<button onclick="challenge()">🎯</button>
+<button onclick="saved()">💾</button>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -102,38 +71,30 @@ display:none;z-index:1000;
 const map=L.map('map').setView([41.3,69.2],6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// SHEET
-const SHEET_URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+// DATA
+const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
 
-let sheetData=[],localData=JSON.parse(localStorage.getItem("places")||"[]");
 let data=[],markers=[];
 
+// POINTS
+let points=parseInt(localStorage.getItem("points")||0);
+updatePoints();
+
 // LOAD
-fetch(SHEET_URL)
-.then(r=>r.json())
-.then(d=>{
-sheetData=d.map(x=>({
+fetch(SHEET).then(r=>r.json()).then(d=>{
+data=d.map(x=>({
 name:x.Name,
 lat:+x.Lat,
 lng:+x.Lng,
-img:x.OldImage||x.NewImage,
-category:x.Category,
-views:+x.Views||0
+img:x.OldImage||x.NewImage
 }));
-merge();
-}).catch(()=>merge());
-
-function merge(){
-data=[...sheetData,...localData];
 render(data);
-setTimeout(showNearby,1500);
-}
+});
 
 // IMAGE FIX
 function fixImg(url){
 if(!url) return "https://picsum.photos/400/300";
-url=url.trim().replaceAll("(","%28").replaceAll(")","%29");
-return "https://images.weserv.nl/?url="+encodeURIComponent(url);
+return url+"?v="+Date.now();
 }
 
 // RENDER
@@ -141,27 +102,46 @@ function render(arr){
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
 arr.forEach(p=>{
-if(!p.lat) return;
 let m=L.marker([p.lat,p.lng]).addTo(map);
-m.on('click',()=>showCard(p));
+m.on('click',()=>show(p));
 markers.push(m);
 });
 }
 
 // CARD
-function showCard(p){
-card.style.display="block";
+function show(p){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let d=dist(pos.coords.latitude,pos.coords.longitude,p.lat,p.lng);
+
 card.innerHTML=`
 <h3>${p.name}</h3>
+
 <img src="${fixImg(p.img)}" onerror="this.src='https://picsum.photos/400/300'">
-<p>${p.category||""}</p>
-<button onclick="goRoute(${p.lat},${p.lng})">🚗 Yo‘l</button>
+
+<p>📏 ${d.toFixed(1)} km</p>
+
+<button onclick="go(${p.lat},${p.lng})">🚗 Borish</button>
+
+<button onclick="share('${p.name}')">📢 Share</button>
+
+<button onclick="like()">❤️ Like</button>
 `;
-saveHistory(p.category);
+
+card.style.display="block";
+
+});
+
+}
+
+// DIST
+function dist(a,b,c,d){
+return Math.sqrt((a-c)**2+(b-d)**2)*111;
 }
 
 // ROUTE
-function goRoute(lat,lng){
+function go(lat,lng){
 navigator.geolocation.getCurrentPosition(pos=>{
 window.open(`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords.longitude}/${lat},${lng}`);
 });
@@ -170,111 +150,78 @@ window.open(`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords
 // SEARCH
 function search(q){
 q=q.toLowerCase();
-render(data.filter(p=>(p.name||"").toLowerCase().includes(q)));
+render(data.filter(p=>p.name.toLowerCase().includes(q)));
 }
 
 // NEARBY
-function showNearby(){
+function nearby(){
 navigator.geolocation.getCurrentPosition(pos=>{
-let lat=pos.coords.latitude,lng=pos.coords.longitude;
 let sorted=[...data].sort((a,b)=>
-Math.hypot(a.lat-lat,a.lng-lng)-Math.hypot(b.lat-lat,b.lng-lng)
+dist(pos.coords.latitude,pos.coords.longitude,a.lat,a.lng)-
+dist(pos.coords.latitude,pos.coords.longitude,b.lat,b.lng)
 );
 render(sorted.slice(0,5));
 });
 }
 
-// TOP
-function showTop(){
-let sorted=[...data].sort((a,b)=>(b.views||0)-(a.views||0));
-render(sorted.slice(0,5));
-}
-
 // AI
-function smartAI(){
-
-let history=JSON.parse(localStorage.getItem("history")||"[]");
-
-let fav=null;
-
-if(history.length){
-let count={};
-history.forEach(x=>count[x]=(count[x]||0)+1);
-fav=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
+function ai(){
+nearby();
+alert("🤖 AI tavsiya berdi");
 }
 
-let base=fav ? data.filter(p=>p.category===fav) : data;
-
-let result=[...base].sort(()=>0.5-Math.random()).slice(0,5);
-
-render(result);
-
+// TOP
+function top(){
+render([...data].sort(()=>0.5-Math.random()).slice(0,5));
 }
 
-// HISTORY
-function saveHistory(cat){
-let h=JSON.parse(localStorage.getItem("history")||"[]");
-h.push(cat);
-localStorage.setItem("history",JSON.stringify(h));
+// LIKE
+function like(){
+addPoints(1);
+alert("❤️ +1 ball");
 }
 
-// AUTO API
-function autoAdd(){
+// SHARE (VIRAL)
+function share(name){
 
-navigator.geolocation.getCurrentPosition(pos=>{
+let text=`Men ${name} joyni TimeMap orqali topdim 🔥`;
 
-let lat=pos.coords.latitude,lng=pos.coords.longitude;
+if(navigator.share){
+navigator.share({text});
+}else{
+navigator.clipboard.writeText(text);
+alert("Copy qilindi");
+}
 
-fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node(around:2000,${lat},${lng})["amenity"];out;`)
-.then(r=>r.json())
-.then(res=>{
-
-let list=res.elements.slice(0,10).map(e=>({
-name:e.tags.name||"Joy",
-lat:e.lat,
-lng:e.lon,
-img:"",
-category:e.tags.amenity
-}));
-
-localData=[...localData,...list];
-localStorage.setItem("places",JSON.stringify(localData));
-
-merge();
-
-alert("Yangi joylar qo‘shildi 🤖");
-
-});
-
-});
+addPoints(5);
 
 }
 
-// ADMIN
-let pass=localStorage.getItem("adminPass")||"admin123";
+// CHALLENGE
+function challenge(){
 
-function openAdmin(){
-adminBox.style.display="block";
+let c="Bugun 2 ta yangi joyga boring 🔥";
+
+alert("🎯 "+c);
+
+addPoints(10);
+
 }
 
-function loginAdmin(){
-if(adminPass.value===pass){
-adminContent.style.display="block";
-}else alert("Xato");
+// SAVE
+function saved(){
+alert("Saqlangan joylar tez orada 🔥");
 }
 
-function changePass(){
-pass=newPass.value;
-localStorage.setItem("adminPass",pass);
-alert("Parol o‘zgardi");
+// POINTS
+function addPoints(p){
+points+=p;
+localStorage.setItem("points",points);
+updatePoints();
 }
 
-function addPlace(){
-let p={name:name.value,lat:+lat.value,lng:+lng.value,img:img.value};
-localData.push(p);
-localStorage.setItem("places",JSON.stringify(localData));
-merge();
-alert("Qo‘shildi");
+function updatePoints(){
+document.getElementById("points").innerText="⭐ "+points;
 }
 
 </script>
