@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap SUPER AI</title>
+<title>TimeMap AI PRO</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
@@ -13,20 +13,33 @@
 body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
-.panel{
-position:absolute;top:10px;left:10px;z-index:1000;
-background:rgba(255,255,255,0.08);
-backdrop-filter:blur(15px);
-padding:12px;border-radius:15px;
-width:300px;
+/* TOP */
+.topbar{
+position:absolute;top:10px;left:10px;right:10px;z-index:1000;
+display:flex;gap:5px;
+}
+.topbar input{flex:1;padding:10px;border-radius:12px;border:none;}
+
+/* BOTTOM */
+.bottom{
+position:absolute;bottom:0;left:0;right:0;
+background:rgba(15,23,42,0.95);
+display:grid;grid-template-columns:repeat(4,1fr);
+gap:6px;padding:10px;z-index:1000;
+}
+.bottom button{
+padding:10px;border:none;border-radius:12px;
+background:#22c55e;color:white;font-size:12px;
 }
 
-input,button{
-width:100%;margin-top:6px;padding:9px;
-border-radius:10px;border:none;
+/* AUTH */
+.auth{
+position:absolute;top:70px;left:10px;right:10px;
+background:rgba(255,255,255,0.1);
+padding:10px;border-radius:15px;z-index:1000;
 }
-
-button{background:#22c55e;color:white;cursor:pointer;}
+.auth input{width:100%;margin-top:5px;padding:8px;border-radius:10px;border:none;}
+.auth button{width:100%;margin-top:5px;padding:8px;border-radius:10px;border:none;background:#22c55e;color:white;}
 
 .popup-img{width:100%;border-radius:10px;margin-top:5px;}
 </style>
@@ -34,16 +47,33 @@ button{background:#22c55e;color:white;cursor:pointer;}
 
 <body>
 
-<div class="panel">
+<div id="map"></div>
+
+<!-- SEARCH -->
+<div class="topbar">
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
-<button onclick="topNearby()">📍 Yaqin Top 5</button>
-<button onclick="challenge()">🎯 Challenge</button>
-<button onclick="superAI()">🧠 SUPER AI</button>
-<button onclick="showTop()">🔥 Top</button>
-<button onclick="showLevel()">🏆 Level</button>
 </div>
 
-<div id="map"></div>
+<!-- LOGIN -->
+<div class="auth">
+<input id="username" placeholder="Username">
+<input id="password" type="password" placeholder="Password">
+<button onclick="register()">Register</button>
+<button onclick="login()">Login</button>
+<p id="userText"></p>
+</div>
+
+<!-- BUTTONS -->
+<div class="bottom">
+<button onclick="topNearby()">📍</button>
+<button onclick="challenge()">🎯</button>
+<button onclick="superAI()">🧠</button>
+<button onclick="surpriseAI()">😳</button>
+<button onclick="toggleHistory()">⏳</button>
+<button onclick="showTop()">🔥</button>
+<button onclick="showLevel()">🏆</button>
+<button onclick="aiLevel()">📊</button>
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
@@ -52,254 +82,171 @@ button{background:#22c55e;color:white;cursor:pointer;}
 
 // MAP
 const map=L.map('map').setView([41.3,69.2],6);
-
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-let routingControl;
-
+let data=[],markers=[],routingControl;
 const URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
 
-let data=[],markers=[];
-
-// LOAD DATA
+// LOAD
 fetch(URL).then(r=>r.json()).then(d=>{
-data=d.map(x=>({
-...x,
-Lat:+x.Lat,
-Lng:+x.Lng,
-Views:+x.Views||0
-}));
+data=d.map(x=>({...x,Lat:+x.Lat,Lng:+x.Lng}));
 render(data);
-showAds();
 });
 
-
-// 🧠 IMAGE SUPER FIX
+// IMAGE FIX
 function fixImg(url){
-
-if(!url || url==="") return "https://via.placeholder.com/300";
-
-url=url.trim();
-
-url=url.replace("(", "%28").replace(")", "%29");
-
-if(!url.startsWith("http")) return "https://via.placeholder.com/300";
-
-return url;
+if(!url) return "https://via.placeholder.com/300";
+return url.trim().replaceAll("(","%28").replaceAll(")","%29");
 }
 
-
 // RENDER
-function render(arr){
+let historyMode=false;
 
+function render(arr){
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
 
 arr.forEach(p=>{
-
 if(!p.Lat) return;
 
-let badge = p.Premium==="yes" ? "🔥 TOP JOY<br>" : "";
+let img = historyMode ? p.OldImage : p.NewImage || p.OldImage;
 
-const m=L.marker([p.Lat,p.Lng]).addTo(map);
+let m=L.marker([p.Lat,p.Lng]).addTo(map);
 
 m.bindPopup(`
-${badge}
-<b>${p.Name}</b><br>
-👀 ${p.Views}<br>
+<b>${p.Name}</b>
+<img src="${fixImg(img)}" class="popup-img" onerror="this.src='https://via.placeholder.com/300'">
 
-<img 
-src="${fixImg(p.OldImage)}"
-class="popup-img"
-loading="lazy"
-onerror="this.src='https://via.placeholder.com/300'"
->
-
-<br>
 <button onclick="route(${p.Lat},${p.Lng})">🚗 Yo‘l</button>
-<button onclick="like('${p.ID}','${p.Category}')">❤️</button>
-<button onclick="share('${p.Name}')">📤</button>
 `);
 
 m.on('click',()=>onPlaceClick(p));
 
 markers.push(m);
-
 });
-
 }
 
-
-// VIEW COUNT
-function increaseViews(id){
-let v=JSON.parse(localStorage.getItem("views")||"{}");
-v[id]=(v[id]||0)+1;
-localStorage.setItem("views",JSON.stringify(v));
-}
-
-
-// CLICK TRACK (AI LEARNING)
+// CLICK
 function onPlaceClick(p){
-increaseViews(p.ID);
-
-let history=JSON.parse(localStorage.getItem("history")||"[]");
-
-history.push({
-category:p.Category,
-time:Date.now()
-});
-
-localStorage.setItem("history",JSON.stringify(history));
+let h=JSON.parse(localStorage.getItem("history")||"[]");
+h.push({category:p.Category});
+localStorage.setItem("history",JSON.stringify(h));
 }
-
 
 // ROUTE
 function route(lat,lng){
-
 navigator.geolocation.getCurrentPosition(pos=>{
-
 if(routingControl) map.removeControl(routingControl);
-
-routingControl = L.Routing.control({
+routingControl=L.Routing.control({
 waypoints:[
 L.latLng(pos.coords.latitude,pos.coords.longitude),
 L.latLng(lat,lng)
 ]
 }).addTo(map);
-
 });
-
 }
-
 
 // SEARCH
 function search(q){
 q=q.toLowerCase();
-render(data.filter(p=>
-(p.Name||"").toLowerCase().includes(q)||
-(p.City||"").toLowerCase().includes(q)
-));
+render(data.filter(p=>(p.Name||"").toLowerCase().includes(q)));
 }
 
-
-// TOP NEARBY
+// NEARBY
 function topNearby(){
-
 navigator.geolocation.getCurrentPosition(pos=>{
-
 let lat=pos.coords.latitude,lng=pos.coords.longitude;
-
 let sorted=data.sort((a,b)=>
-Math.hypot(a.Lat-lat,a.Lng-lng)-
-Math.hypot(b.Lat-lat,b.Lng-lng)
+Math.hypot(a.Lat-lat,a.Lng-lng)-Math.hypot(b.Lat-lat,b.Lng-lng)
 );
-
 render(sorted.slice(0,5));
-
-alert("📍 Eng yaqin 5 joy");
-
 });
-
 }
 
-
-// ❤️ LIKE + AI
-function like(id,cat){
-let pref=JSON.parse(localStorage.getItem("pref")||"{}");
-pref[cat]=(pref[cat]||0)+1;
-localStorage.setItem("pref",JSON.stringify(pref));
-}
-
-
-// 🧠 SUPER AI
+// 🧠 SUPER AI 2.0
 function superAI(){
 
 let history=JSON.parse(localStorage.getItem("history")||"[]");
 
 if(history.length===0){
-alert("AI hali sizni o‘rganmadi 😅");
+alert("AI o‘rganmoqda 😅");
 return;
 }
 
 let count={};
-
-history.forEach(h=>{
-count[h.category]=(count[h.category]||0)+1;
-});
+history.forEach(h=>count[h.category]=(count[h.category]||0)+1);
 
 let fav=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
 
-let list=data.filter(p=>p.Category===fav);
+let favList=data.filter(p=>p.Category===fav);
+let trending=[...data].sort((a,b)=>(b.Views||0)-(a.Views||0)).slice(0,5);
+let random=[...data].sort(()=>0.5-Math.random()).slice(0,3);
 
-if(list.length===0) list=data;
+let final=[...favList.slice(0,2),...trending.slice(0,2),...random];
 
-list.sort((a,b)=>(b.Views||0)-(a.Views||0));
+render(final);
 
-let r=list[Math.floor(Math.random()*Math.min(5,list.length))];
-
-map.setView([r.Lat,r.Lng],14);
-
-alert("🤖 AI siz uchun: "+r.Name);
+alert("🤖 AI siz uchun joylar topdi");
 
 }
 
+// 😳 SURPRISE
+function surpriseAI(){
+let r=data[Math.floor(Math.random()*data.length)];
+map.setView([r.Lat,r.Lng],14);
+alert("😳 "+r.Name);
+}
 
 // 🎯 CHALLENGE
 function challenge(){
-
-let r=data[Math.floor(Math.random()*data.length)];
-
 let score=Number(localStorage.getItem("score")||0)+20;
-
 localStorage.setItem("score",score);
-
-map.setView([r.Lat,r.Lng],14);
-
-alert(`🎯 ${r.Name}\n🏆 ${score}`);
-
+alert("🏆 "+score);
 }
-
 
 // 🏆 LEVEL
 function showLevel(){
-
-let score=Number(localStorage.getItem("score")||0);
-
-let level="Bronze";
-if(score>500) level="Silver";
-if(score>1000) level="Gold";
-
-alert(`🏆 ${level}\nBall: ${score}`);
-
+let s=Number(localStorage.getItem("score")||0);
+alert("Score: "+s);
 }
-
 
 // 🔥 TOP
 function showTop(){
-render([...data].sort((a,b)=>b.Views-a.Views).slice(0,10));
+render([...data].sort((a,b)=>(b.Views||0)-(a.Views||0)).slice(0,10));
 }
 
-
-// 📤 SHARE
-function share(name){
-navigator.clipboard.writeText("TimeMap: "+name);
-alert("📤 Nusxa olindi");
+// ⏳ HISTORY
+function toggleHistory(){
+historyMode=!historyMode;
+render(data);
 }
 
+// 📊 AI LEVEL
+function aiLevel(){
+let h=JSON.parse(localStorage.getItem("history")||"[]");
+let level="Beginner";
+if(h.length>10) level="Explorer";
+if(h.length>30) level="Pro";
+if(h.length>60) level="Master";
+alert("AI Level: "+level);
+}
 
-// 💰 ADS SYSTEM
-function showAds(){
+// 🔐 AUTH
+function register(){
+let u=username.value,p=password.value;
+let users=JSON.parse(localStorage.getItem("users")||"{}");
+users[u]={password:p,score:0};
+localStorage.setItem("users",JSON.stringify(users));
+alert("Registered");
+}
 
-let ads=data.filter(p=>p.Premium==="yes");
-
-if(ads.length===0) return;
-
-let r=ads[Math.floor(Math.random()*ads.length)];
-
-setTimeout(()=>{
-alert("🔥 Tavsiya: "+r.Name);
-},3000);
-
+function login(){
+let u=username.value,p=password.value;
+let users=JSON.parse(localStorage.getItem("users")||"{}");
+if(users[u] && users[u].password===p){
+localStorage.setItem("user",u);
+userText.innerText="👤 "+u;
+}else alert("Error");
 }
 
 </script>
