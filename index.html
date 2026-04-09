@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap PRO MAX</title>
+<title>TimeMap SUPER AI</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css"/>
@@ -28,11 +28,7 @@ border-radius:10px;border:none;
 
 button{background:#22c55e;color:white;cursor:pointer;}
 
-.popup-img{
-width:100%;
-border-radius:10px;
-margin-top:5px;
-}
+.popup-img{width:100%;border-radius:10px;margin-top:5px;}
 </style>
 </head>
 
@@ -42,7 +38,7 @@ margin-top:5px;
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
 <button onclick="topNearby()">📍 Yaqin Top 5</button>
 <button onclick="challenge()">🎯 Challenge</button>
-<button onclick="aiRecommend()">🤖 AI</button>
+<button onclick="superAI()">🧠 SUPER AI</button>
 <button onclick="showTop()">🔥 Top</button>
 <button onclick="showLevel()">🏆 Level</button>
 </div>
@@ -54,6 +50,7 @@ margin-top:5px;
 
 <script>
 
+// MAP
 const map=L.map('map').setView([41.3,69.2],6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -76,11 +73,21 @@ render(data);
 showAds();
 });
 
-// IMAGE FIX FUNCTION
+
+// 🧠 IMAGE SUPER FIX
 function fixImg(url){
-if(!url) return "https://via.placeholder.com/300";
-return encodeURI(url);
+
+if(!url || url==="") return "https://via.placeholder.com/300";
+
+url=url.trim();
+
+url=url.replace("(", "%28").replace(")", "%29");
+
+if(!url.startsWith("http")) return "https://via.placeholder.com/300";
+
+return url;
 }
+
 
 // RENDER
 function render(arr){
@@ -102,7 +109,7 @@ ${badge}
 👀 ${p.Views}<br>
 
 <img 
-src="${fixImg(p.OldImage)}" 
+src="${fixImg(p.OldImage)}"
 class="popup-img"
 loading="lazy"
 onerror="this.src='https://via.placeholder.com/300'"
@@ -114,7 +121,7 @@ onerror="this.src='https://via.placeholder.com/300'"
 <button onclick="share('${p.Name}')">📤</button>
 `);
 
-m.on('click',()=>increaseViews(p.ID));
+m.on('click',()=>onPlaceClick(p));
 
 markers.push(m);
 
@@ -122,12 +129,29 @@ markers.push(m);
 
 }
 
+
 // VIEW COUNT
 function increaseViews(id){
 let v=JSON.parse(localStorage.getItem("views")||"{}");
 v[id]=(v[id]||0)+1;
 localStorage.setItem("views",JSON.stringify(v));
 }
+
+
+// CLICK TRACK (AI LEARNING)
+function onPlaceClick(p){
+increaseViews(p.ID);
+
+let history=JSON.parse(localStorage.getItem("history")||"[]");
+
+history.push({
+category:p.Category,
+time:Date.now()
+});
+
+localStorage.setItem("history",JSON.stringify(history));
+}
+
 
 // ROUTE
 function route(lat,lng){
@@ -147,6 +171,7 @@ L.latLng(lat,lng)
 
 }
 
+
 // SEARCH
 function search(q){
 q=q.toLowerCase();
@@ -155,6 +180,7 @@ render(data.filter(p=>
 (p.City||"").toLowerCase().includes(q)
 ));
 }
+
 
 // TOP NEARBY
 function topNearby(){
@@ -176,33 +202,49 @@ alert("📍 Eng yaqin 5 joy");
 
 }
 
-// LIKE + AI
+
+// ❤️ LIKE + AI
 function like(id,cat){
 let pref=JSON.parse(localStorage.getItem("pref")||"{}");
 pref[cat]=(pref[cat]||0)+1;
 localStorage.setItem("pref",JSON.stringify(pref));
 }
 
-// AI
-function aiRecommend(){
 
-let pref=JSON.parse(localStorage.getItem("pref")||"{}");
+// 🧠 SUPER AI
+function superAI(){
 
-let fav=Object.keys(pref).sort((a,b)=>pref[b]-pref[a])[0];
+let history=JSON.parse(localStorage.getItem("history")||"[]");
+
+if(history.length===0){
+alert("AI hali sizni o‘rganmadi 😅");
+return;
+}
+
+let count={};
+
+history.forEach(h=>{
+count[h.category]=(count[h.category]||0)+1;
+});
+
+let fav=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
 
 let list=data.filter(p=>p.Category===fav);
 
 if(list.length===0) list=data;
 
-let r=list[Math.floor(Math.random()*list.length)];
+list.sort((a,b)=>(b.Views||0)-(a.Views||0));
+
+let r=list[Math.floor(Math.random()*Math.min(5,list.length))];
 
 map.setView([r.Lat,r.Lng],14);
 
-alert("🤖 "+r.Name);
+alert("🤖 AI siz uchun: "+r.Name);
 
 }
 
-// CHALLENGE
+
+// 🎯 CHALLENGE
 function challenge(){
 
 let r=data[Math.floor(Math.random()*data.length)];
@@ -217,7 +259,8 @@ alert(`🎯 ${r.Name}\n🏆 ${score}`);
 
 }
 
-// LEVEL
+
+// 🏆 LEVEL
 function showLevel(){
 
 let score=Number(localStorage.getItem("score")||0);
@@ -230,18 +273,21 @@ alert(`🏆 ${level}\nBall: ${score}`);
 
 }
 
-// TOP
+
+// 🔥 TOP
 function showTop(){
 render([...data].sort((a,b)=>b.Views-a.Views).slice(0,10));
 }
 
-// SHARE
+
+// 📤 SHARE
 function share(name){
 navigator.clipboard.writeText("TimeMap: "+name);
 alert("📤 Nusxa olindi");
 }
 
-// ADS
+
+// 💰 ADS SYSTEM
 function showAds(){
 
 let ads=data.filter(p=>p.Premium==="yes");
