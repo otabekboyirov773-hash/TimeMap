@@ -12,40 +12,44 @@
 body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
+/* TOP */
 .top{
 position:absolute;top:10px;left:10px;right:10px;
 display:flex;gap:5px;z-index:1000;
 }
-
 .top input{
 flex:1;padding:12px;border-radius:12px;border:none;
 }
 
+/* BOTTOM */
 .bottom{
 position:absolute;bottom:10px;left:10px;right:10px;
-display:grid;grid-template-columns:repeat(4,1fr);
+display:grid;grid-template-columns:repeat(5,1fr);
 gap:6px;z-index:1000;
 }
-
 .bottom button{
 padding:10px;border:none;border-radius:12px;
 background:#22c55e;color:white;font-size:12px;
 }
 
+/* CARD */
 .card{
-position:absolute;bottom:80px;left:10px;right:10px;
-background:#111;padding:10px;border-radius:15px;
+position:absolute;bottom:0;left:0;right:0;
+background:#111;padding:15px;
+border-radius:20px 20px 0 0;
 display:none;z-index:1000;
+max-height:50%;overflow:auto;
+animation:up 0.3s;
 }
+@keyframes up{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.card img{width:100%;border-radius:12px;margin-top:5px;}
 
-.card img{width:100%;border-radius:10px;}
-
+/* ADMIN */
 .admin{
 position:absolute;top:60px;left:10px;right:10px;
 background:#111;padding:10px;border-radius:10px;
 display:none;z-index:1000;
 }
-
 .admin input{width:100%;margin:4px 0;padding:8px;border:none;border-radius:8px;}
 </style>
 </head>
@@ -64,6 +68,7 @@ display:none;z-index:1000;
 <button onclick="showNearby()">📍</button>
 <button onclick="smartAI()">🧠</button>
 <button onclick="showTop()">🔥</button>
+<button onclick="autoAdd()">🤖</button>
 <button onclick="openAdmin()">⚙️</button>
 </div>
 
@@ -97,15 +102,13 @@ display:none;z-index:1000;
 const map=L.map('map').setView([41.3,69.2],6);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// 🔗 SHEET
+// SHEET
 const SHEET_URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
 
-let sheetData=[];
-let localData=JSON.parse(localStorage.getItem("places")||"[]");
-let data=[];
-let markers=[];
+let sheetData=[],localData=JSON.parse(localStorage.getItem("places")||"[]");
+let data=[],markers=[];
 
-// LOAD SHEET
+// LOAD
 fetch(SHEET_URL)
 .then(r=>r.json())
 .then(d=>{
@@ -113,58 +116,55 @@ sheetData=d.map(x=>({
 name:x.Name,
 lat:+x.Lat,
 lng:+x.Lng,
-img:x.OldImage || x.NewImage,
+img:x.OldImage||x.NewImage,
 category:x.Category,
 views:+x.Views||0
 }));
+merge();
+}).catch(()=>merge());
 
-mergeData();
-})
-.catch(()=>mergeData());
-
-// MERGE
-function mergeData(){
+function merge(){
 data=[...sheetData,...localData];
 render(data);
-setTimeout(showNearby,2000);
+setTimeout(showNearby,1500);
 }
 
 // IMAGE FIX
 function fixImg(url){
-if(!url) return "https://via.placeholder.com/300";
-return url.trim().replaceAll("(","%28").replaceAll(")","%29");
+if(!url) return "https://picsum.photos/400/300";
+url=url.trim().replaceAll("(","%28").replaceAll(")","%29");
+return "https://images.weserv.nl/?url="+encodeURIComponent(url);
 }
 
 // RENDER
 function render(arr){
-
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
-
 arr.forEach(p=>{
 if(!p.lat) return;
-
 let m=L.marker([p.lat,p.lng]).addTo(map);
-
 m.on('click',()=>showCard(p));
-
 markers.push(m);
 });
-
 }
 
 // CARD
 function showCard(p){
-
-let card=document.getElementById("card");
-
 card.style.display="block";
-
 card.innerHTML=`
 <h3>${p.name}</h3>
-<img src="${fixImg(p.img)}" onerror="this.src='https://via.placeholder.com/300'">
+<img src="${fixImg(p.img)}" onerror="this.src='https://picsum.photos/400/300'">
+<p>${p.category||""}</p>
+<button onclick="goRoute(${p.lat},${p.lng})">🚗 Yo‘l</button>
 `;
+saveHistory(p.category);
+}
 
+// ROUTE
+function goRoute(lat,lng){
+navigator.geolocation.getCurrentPosition(pos=>{
+window.open(`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords.longitude}/${lat},${lng}`);
+});
 }
 
 // SEARCH
@@ -173,133 +173,108 @@ q=q.toLowerCase();
 render(data.filter(p=>(p.name||"").toLowerCase().includes(q)));
 }
 
-// 📍 NEARBY
+// NEARBY
 function showNearby(){
+navigator.geolocation.getCurrentPosition(pos=>{
+let lat=pos.coords.latitude,lng=pos.coords.longitude;
+let sorted=[...data].sort((a,b)=>
+Math.hypot(a.lat-lat,a.lng-lng)-Math.hypot(b.lat-lat,b.lng-lng)
+);
+render(sorted.slice(0,5));
+});
+}
+
+// TOP
+function showTop(){
+let sorted=[...data].sort((a,b)=>(b.views||0)-(a.views||0));
+render(sorted.slice(0,5));
+}
+
+// AI
+function smartAI(){
+
+let history=JSON.parse(localStorage.getItem("history")||"[]");
+
+let fav=null;
+
+if(history.length){
+let count={};
+history.forEach(x=>count[x]=(count[x]||0)+1);
+fav=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
+}
+
+let base=fav ? data.filter(p=>p.category===fav) : data;
+
+let result=[...base].sort(()=>0.5-Math.random()).slice(0,5);
+
+render(result);
+
+}
+
+// HISTORY
+function saveHistory(cat){
+let h=JSON.parse(localStorage.getItem("history")||"[]");
+h.push(cat);
+localStorage.setItem("history",JSON.stringify(h));
+}
+
+// AUTO API
+function autoAdd(){
 
 navigator.geolocation.getCurrentPosition(pos=>{
 
 let lat=pos.coords.latitude,lng=pos.coords.longitude;
 
-let sorted=[...data].sort((a,b)=>
-Math.hypot(a.lat-lat,a.lng-lng)-
-Math.hypot(b.lat-lat,b.lng-lng)
-);
+fetch(`https://overpass-api.de/api/interpreter?data=[out:json];node(around:2000,${lat},${lng})["amenity"];out;`)
+.then(r=>r.json())
+.then(res=>{
 
-let top5=sorted.slice(0,5);
+let list=res.elements.slice(0,10).map(e=>({
+name:e.tags.name||"Joy",
+lat:e.lat,
+lng:e.lon,
+img:"",
+category:e.tags.amenity
+}));
 
-render(top5);
+localData=[...localData,...list];
+localStorage.setItem("places",JSON.stringify(localData));
 
-if(top5[0]) showCard(top5[0]);
+merge();
+
+alert("Yangi joylar qo‘shildi 🤖");
 
 });
 
-}
-
-// 🔥 TOP
-function showTop(){
-
-let sorted=[...data].sort((a,b)=>(b.views||0)-(a.views||0));
-
-render(sorted.slice(0,5));
-
-if(sorted[0]) showCard(sorted[0]);
-
-}
-
-// 🧠 REAL AI
-function smartAI(){
-
-if(data.length===0){
-alert("Data yo‘q ❌");
-return;
-}
-
-// USER HISTORY
-let history=JSON.parse(localStorage.getItem("history")||"[]");
-
-let favCat=null;
-
-if(history.length>0){
-
-let count={};
-
-history.forEach(h=>{
-count[h]=(count[h]||0)+1;
 });
-
-favCat=Object.keys(count).sort((a,b)=>count[b]-count[a])[0];
-
-}
-
-// FILTER
-let list=favCat ? data.filter(p=>p.category===favCat) : data;
-
-// MIX
-let result=[...list].sort(()=>0.5-Math.random()).slice(0,5);
-
-render(result);
-
-showCard(result[0]);
-
-alert("🤖 AI sizga mos 5 ta joy topdi");
-
-}
-
-// SAVE HISTORY
-function saveHistory(cat){
-
-let h=JSON.parse(localStorage.getItem("history")||"[]");
-
-h.push(cat);
-
-localStorage.setItem("history",JSON.stringify(h));
 
 }
 
 // ADMIN
+let pass=localStorage.getItem("adminPass")||"admin123";
+
 function openAdmin(){
-document.getElementById("adminBox").style.display="block";
+adminBox.style.display="block";
 }
 
-// PASSWORD
-let adminPassword=localStorage.getItem("adminPass")||"admin123";
-
 function loginAdmin(){
-
-if(adminPass.value===adminPassword){
+if(adminPass.value===pass){
 adminContent.style.display="block";
-}else alert("Xato ❌");
-
+}else alert("Xato");
 }
 
 function changePass(){
-
-adminPassword=newPass.value;
-
-localStorage.setItem("adminPass",adminPassword);
-
-alert("Parol o‘zgardi 🔐");
-
+pass=newPass.value;
+localStorage.setItem("adminPass",pass);
+alert("Parol o‘zgardi");
 }
 
-// ADD PLACE
 function addPlace(){
-
-let p={
-name:name.value,
-lat:+lat.value,
-lng:+lng.value,
-img:img.value
-};
-
+let p={name:name.value,lat:+lat.value,lng:+lng.value,img:img.value};
 localData.push(p);
-
 localStorage.setItem("places",JSON.stringify(localData));
-
-mergeData();
-
-alert("Qo‘shildi ✅");
-
+merge();
+alert("Qo‘shildi");
 }
 
 </script>
