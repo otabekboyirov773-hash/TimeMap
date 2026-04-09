@@ -28,8 +28,11 @@ border-radius:10px;border:none;
 
 button{background:#22c55e;color:white;cursor:pointer;}
 
-.popup-img{width:100%;border-radius:10px;margin-top:5px;}
-.premium{color:gold;font-weight:bold;}
+.popup-img{
+width:100%;
+border-radius:10px;
+margin-top:5px;
+}
 </style>
 </head>
 
@@ -61,12 +64,23 @@ const URL="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w
 
 let data=[],markers=[];
 
-// LOAD
+// LOAD DATA
 fetch(URL).then(r=>r.json()).then(d=>{
-data=d.map(x=>({...x,Lat:+x.Lat,Lng:+x.Lng,Views:+x.Views||0}));
+data=d.map(x=>({
+...x,
+Lat:+x.Lat,
+Lng:+x.Lng,
+Views:+x.Views||0
+}));
 render(data);
 showAds();
 });
+
+// IMAGE FIX FUNCTION
+function fixImg(url){
+if(!url) return "https://via.placeholder.com/300";
+return encodeURI(url);
+}
 
 // RENDER
 function render(arr){
@@ -87,7 +101,12 @@ ${badge}
 <b>${p.Name}</b><br>
 👀 ${p.Views}<br>
 
-<img src="${p.OldImage||'https://via.placeholder.com/300'}" class="popup-img">
+<img 
+src="${fixImg(p.OldImage)}" 
+class="popup-img"
+loading="lazy"
+onerror="this.src='https://via.placeholder.com/300'"
+>
 
 <br>
 <button onclick="route(${p.Lat},${p.Lng})">🚗 Yo‘l</button>
@@ -105,11 +124,9 @@ markers.push(m);
 
 // VIEW COUNT
 function increaseViews(id){
-
 let v=JSON.parse(localStorage.getItem("views")||"{}");
 v[id]=(v[id]||0)+1;
 localStorage.setItem("views",JSON.stringify(v));
-
 }
 
 // ROUTE
@@ -153,18 +170,17 @@ Math.hypot(b.Lat-lat,b.Lng-lng)
 
 render(sorted.slice(0,5));
 
+alert("📍 Eng yaqin 5 joy");
+
 });
 
 }
 
 // LIKE + AI
 function like(id,cat){
-
 let pref=JSON.parse(localStorage.getItem("pref")||"{}");
 pref[cat]=(pref[cat]||0)+1;
-
 localStorage.setItem("pref",JSON.stringify(pref));
-
 }
 
 // AI
