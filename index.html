@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap NEXT LEVEL</title>
+<title>TimeMap PRO ACCOUNT</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
@@ -12,76 +12,56 @@
 body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
-/* TOP */
-.top{
-position:absolute;top:10px;left:10px;right:10px;
-z-index:1000;
+/* LOGIN */
+.login{
+position:absolute;
+top:0;left:0;right:0;bottom:0;
+background:#000;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+z-index:2000;
 }
-.top input{
-width:100%;
-padding:12px;
-border-radius:12px;
+.login input{
+margin:5px;
+padding:10px;
+border-radius:10px;
 border:none;
 }
 
+/* TOP */
+.top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;}
+.top input{width:100%;padding:12px;border-radius:12px;border:none;}
+
 /* BUTTONS */
 .buttons{
-position:absolute;
-bottom:10px;
-left:10px;
-right:10px;
-display:grid;
-grid-template-columns:repeat(5,1fr);
-gap:6px;
-z-index:1000;
+position:absolute;bottom:10px;left:10px;right:10px;
+display:grid;grid-template-columns:repeat(5,1fr);
+gap:5px;z-index:1000;
 }
 .buttons button{
-padding:10px;
-border:none;
-border-radius:10px;
-background:#22c55e;
-color:white;
+padding:10px;border:none;border-radius:10px;background:#22c55e;color:white;
 }
 
 /* CARD */
 .card{
-position:absolute;
-bottom:0;
-left:0;
-right:0;
-background:#111;
-padding:15px;
-border-radius:20px 20px 0 0;
-max-height:65%;
-overflow:auto;
-display:none;
-z-index:1000;
+position:absolute;bottom:0;left:0;right:0;
+background:#111;padding:15px;border-radius:20px 20px 0 0;
+display:none;max-height:60%;overflow:auto;z-index:1000;
 }
-.card img{width:100%;border-radius:12px;}
-
-/* ADMIN */
-.admin{
-position:absolute;
-top:60px;
-left:10px;
-right:10px;
-background:#111;
-padding:10px;
-border-radius:10px;
-display:none;
-z-index:1000;
-}
-.admin input{
-width:100%;
-margin:5px 0;
-padding:8px;
-border:none;
-border-radius:8px;
-}
+.card img{width:100%;border-radius:10px;}
 </style>
 </head>
 
 <body>
+
+<div class="login" id="loginBox">
+<h2>TimeMap Login</h2>
+<input id="user" placeholder="Login">
+<input id="pass" placeholder="Parol" type="password">
+<button onclick="login()">Kirish</button>
+</div>
 
 <div id="map"></div>
 
@@ -91,39 +71,38 @@ border-radius:8px;
 
 <div class="card" id="card"></div>
 
-<div class="admin" id="adminBox">
-
-<input id="pass" placeholder="Parol">
-<button onclick="login()">Kirish</button>
-
-<div id="adminPanel" style="display:none;">
-
-<input id="name" placeholder="Joy nomi">
-<input id="lat" placeholder="Lat">
-<input id="lng" placeholder="Lng">
-<input id="img" placeholder="Rasm link">
-
-<button onclick="addPlace()">➕ Qo‘shish</button>
-
-<hr>
-
-<input id="challengeInput" placeholder="Challenge yoz">
-<button onclick="saveChallenge()">🎯 Saqlash</button>
-
-</div>
-</div>
-
 <div class="buttons">
 <button onclick="nearby()">📍</button>
 <button onclick="ai()">🧠</button>
 <button onclick="top()">🔥</button>
-<button onclick="toggleAdmin()">⚙️</button>
-<button onclick="showChallenge()">🎯</button>
+<button onclick="logout()">🚪</button>
+<button onclick="share()">📢</button>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+
+// LOGIN
+function login(){
+let u=user.value;
+let p=pass.value;
+
+if(!u || !p) return alert("To‘ldir");
+
+localStorage.setItem("user",u);
+loginBox.style.display="none";
+}
+
+function logout(){
+localStorage.removeItem("user");
+location.reload();
+}
+
+// AUTO LOGIN
+if(localStorage.getItem("user")){
+loginBox.style.display="none";
+}
 
 // MAP
 let map=L.map('map').setView([41.3,69.2],6);
@@ -133,7 +112,6 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
 
 let data=[],markers=[];
-let localData=JSON.parse(localStorage.getItem("places")||"[]");
 
 // LOAD
 fetch(SHEET+"?t="+Date.now())
@@ -143,22 +121,13 @@ data=d.map(x=>({
 name:x.Name,
 lat:+x.Lat,
 lng:+x.Lng,
-img:x.OldImage||x.NewImage,
-category:x.Category
+img:x.OldImage||x.NewImage
 }));
-merge();
-})
-.catch(()=>{
-alert("Sheet ishlamadi, local ishlayapti");
-merge();
-});
-
-function merge(){
-data=[...data,...localData];
 render(data);
-}
+})
+.catch(()=>alert("Sheet error"));
 
-// IMAGE FIX
+// IMAGE
 function fixImg(url){
 if(!url) return "https://picsum.photos/400/300";
 return url+"?v="+Date.now();
@@ -180,7 +149,7 @@ function show(p){
 card.style.display="block";
 card.innerHTML=`
 <h3>${p.name}</h3>
-<img src="${fixImg(p.img)}" onerror="this.src='https://picsum.photos/400/300'">
+<img src="${fixImg(p.img)}">
 <button onclick="route(${p.lat},${p.lng})">🚗 Yo‘l</button>
 `;
 }
@@ -220,43 +189,11 @@ function top(){
 render([...data].sort(()=>0.5-Math.random()).slice(0,5));
 }
 
-// ADMIN
-function toggleAdmin(){
-adminBox.style.display=
-adminBox.style.display==="block"?"none":"block";
-}
-
-let adminPass="1234";
-
-function login(){
-if(pass.value===adminPass){
-adminPanel.style.display="block";
-}else alert("Xato");
-}
-
-// ADD PLACE
-function addPlace(){
-let p={
-name:name.value,
-lat:+lat.value,
-lng:+lng.value,
-img:img.value
-};
-localData.push(p);
-localStorage.setItem("places",JSON.stringify(localData));
-merge();
-alert("Qo‘shildi");
-}
-
-// CHALLENGE
-function saveChallenge(){
-localStorage.setItem("challenge",challengeInput.value);
-alert("Saqlandi");
-}
-
-function showChallenge(){
-let c=localStorage.getItem("challenge")||"Hali yo‘q";
-alert("🎯 "+c);
+// SHARE
+function share(){
+let text="Men TimeMap ishlatyapman 🔥";
+navigator.clipboard.writeText(text);
+alert("Copy qilindi");
 }
 
 </script>
