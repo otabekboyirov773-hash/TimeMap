@@ -4,38 +4,63 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap Stable</title>
+<title>TimeMap v2 PRO</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body{margin:0;}
+body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
 #map{height:100vh;}
 
+/* TOP */
 .top{
-position:absolute;
-top:10px;
-left:10px;
-right:10px;
-z-index:1000;
+position:absolute;top:10px;left:10px;right:10px;z-index:1000;
 }
-
 .top input{
 width:100%;
-padding:10px;
-border-radius:10px;
+padding:12px;
+border-radius:12px;
 border:none;
 }
 
-.adminBtn{
-position:absolute;
-top:60px;
-right:10px;
-z-index:1000;
-padding:8px;
-background:black;
-color:white;
-border-radius:8px;
+/* BOTTOM */
+.bottom{
+position:absolute;bottom:10px;left:10px;right:10px;
+display:grid;grid-template-columns:repeat(4,1fr);
+gap:6px;z-index:1000;
+}
+.bottom button{
+padding:10px;border:none;border-radius:10px;
+background:#22c55e;color:white;
+}
+
+/* STATUS */
+.status{
+position:absolute;bottom:80px;left:10px;right:10px;
+background:#000;padding:8px;border-radius:10px;
+font-size:12px;color:#0f0;z-index:1000;
+}
+
+/* CARD */
+.card{
+position:absolute;bottom:0;left:0;right:0;
+background:#111;padding:15px;
+border-radius:20px 20px 0 0;
+max-height:60%;overflow:auto;
+display:none;z-index:1000;
+}
+.card img{
+width:100%;
+border-radius:12px;
+margin-top:5px;
+}
+.card button{
+width:100%;
+margin-top:6px;
+padding:10px;
+border:none;
+border-radius:10px;
+background:#22c55e;color:white;
 }
 </style>
 </head>
@@ -45,57 +70,177 @@ border-radius:8px;
 <div id="map"></div>
 
 <div class="top">
-<input placeholder="Qidiruv..." oninput="search(this.value)">
+<input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
 </div>
 
-<button class="adminBtn" onclick="alert('Admin keyin qo‘shamiz')">⚙️</button>
+<div class="status" id="status">⏳ Yuklanmoqda...</div>
+
+<div class="card" id="card"></div>
+
+<div class="bottom">
+<button onclick="nearby()">📍</button>
+<button onclick="ai()">🧠</button>
+<button onclick="topPlaces()">🔥</button>
+<button onclick="reload()">🔄</button>
+</div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
 
-// MAP
-const map = L.map('map').setView([41.3, 69.2], 6);
+// ===== STATUS =====
+function setStatus(t){
+document.getElementById("status").innerText=t;
+console.log(t);
+}
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-maxZoom: 19
+// ===== MAP =====
+let map=L.map('map').setView([41.3,69.2],6);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
 }).addTo(map);
 
-// TEST DATA
-let data = [
-{ name:"Toshkent", lat:41.3111, lng:69.2797 },
-{ name:"Samarqand", lat:39.6542, lng:66.9597 },
-{ name:"Buxoro", lat:39.7747, lng:64.4286 }
+// ===== DATA =====
+let data=[];
+let markers=[];
+
+const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+
+// ===== LOAD =====
+async function loadData(){
+
+try{
+setStatus("📡 Yuklanmoqda...");
+
+let res=await fetch(SHEET+"?t="+Date.now());
+let json=await res.json();
+
+data=json.map(x=>({
+name:x.Name,
+lat:+x.Lat,
+lng:+x.Lng,
+img:x.OldImage||x.NewImage,
+category:x.Category,
+views:+x.Views||0
+}));
+
+setStatus("✅ "+data.length+" ta joy yuklandi");
+
+render(data);
+
+}catch(e){
+
+setStatus("⚠️ Sheet ishlamadi (fallback)");
+
+data=[
+{name:"Toshkent",lat:41.3,lng:69.2},
+{name:"Samarqand",lat:39.6,lng:66.9}
 ];
 
-// RENDER
+render(data);
+
+}
+
+}
+
+// ===== IMAGE =====
+function fixImg(url){
+if(!url) return "https://picsum.photos/400/300";
+return url+"?v="+Date.now();
+}
+
+// ===== RENDER =====
 function render(arr){
 
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
+
 arr.forEach(p=>{
-L.marker([p.lat, p.lng])
-.addTo(map)
-.bindPopup(p.name);
+if(!p.lat) return;
+
+let m=L.marker([p.lat,p.lng]).addTo(map);
+
+m.on('click',()=>showCard(p));
+
+markers.push(m);
 });
 
 }
 
-// SEARCH
-function search(q){
-q = q.toLowerCase();
+// ===== DIST =====
+function dist(a,b,c,d){
+return Math.sqrt((a-c)**2+(b-d)**2)*111;
+}
 
-let filtered = data.filter(p =>
-p.name.toLowerCase().includes(q)
-);
+// ===== CARD =====
+function showCard(p){
 
-map.eachLayer(layer=>{
-if(layer instanceof L.Marker) map.removeLayer(layer);
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let d=dist(pos.coords.latitude,pos.coords.longitude,p.lat,p.lng);
+let time=(d/40).toFixed(1);
+
+document.getElementById("card").style.display="block";
+
+document.getElementById("card").innerHTML=`
+<h3>${p.name}</h3>
+
+<img src="${fixImg(p.img)}"
+onerror="this.src='https://picsum.photos/400/300'">
+
+<p>📏 ${d.toFixed(1)} km | ⏱ ${time} soat</p>
+
+<button onclick="route(${p.lat},${p.lng})">🚗 Yo‘l</button>
+`;
+
 });
 
-render(filtered);
+}
+
+// ===== ROUTE =====
+function route(lat,lng){
+navigator.geolocation.getCurrentPosition(pos=>{
+window.open(`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords.longitude}/${lat},${lng}`);
+});
+}
+
+// ===== SEARCH =====
+function search(q){
+q=q.toLowerCase();
+render(data.filter(p=>(p.name||"").toLowerCase().includes(q)));
+}
+
+// ===== NEARBY =====
+function nearby(){
+navigator.geolocation.getCurrentPosition(pos=>{
+let sorted=[...data].sort((a,b)=>
+dist(pos.coords.latitude,pos.coords.longitude,a.lat,a.lng)-
+dist(pos.coords.latitude,pos.coords.longitude,b.lat,b.lng)
+);
+render(sorted.slice(0,5));
+});
+}
+
+// ===== TOP =====
+function topPlaces(){
+let sorted=[...data].sort((a,b)=>(b.views||0)-(a.views||0));
+render(sorted.slice(0,5));
+}
+
+// ===== AI =====
+function ai(){
+nearby();
+setStatus("🤖 AI yaqin joylarni tavsiya qildi");
+}
+
+// ===== RELOAD =====
+function reload(){
+loadData();
 }
 
 // START
-render(data);
+loadData();
 
 </script>
 
