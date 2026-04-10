@@ -4,23 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap FINAL STABLE</title>
+<title>TimeMap PRO v4</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body{margin:0;font-family:sans-serif;}
-#map{height:100vh;width:100%;background:#222;}
+body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
+#map{height:100vh;width:100%;}
 
+/* STATUS */
 .status{
-position:absolute;
-top:10px;left:10px;
+position:absolute;top:10px;left:10px;
 background:black;color:#0f0;
 padding:8px;border-radius:10px;
-z-index:1000;
-font-size:12px;
+z-index:1000;font-size:12px;
 }
 
+/* SEARCH */
 .top{
 position:absolute;top:50px;left:10px;right:10px;
 z-index:1000;
@@ -29,13 +29,25 @@ z-index:1000;
 width:100%;padding:10px;border-radius:10px;border:none;
 }
 
+/* BUTTONS */
+.buttons{
+position:absolute;bottom:10px;left:10px;right:10px;
+display:grid;grid-template-columns:repeat(3,1fr);
+gap:5px;z-index:1000;
+}
+.buttons button{
+padding:10px;border:none;border-radius:10px;
+background:#22c55e;color:white;
+}
+
+/* CARD */
 .card{
 position:absolute;bottom:0;left:0;right:0;
-background:#111;color:white;
-padding:15px;border-radius:20px 20px 0 0;
-display:none;
+background:#111;padding:15px;
+border-radius:20px 20px 0 0;
+display:none;max-height:60%;overflow:auto;
 }
-.card img{width:100%;border-radius:10px;}
+.card img{width:100%;border-radius:10px;margin-top:5px;}
 </style>
 </head>
 
@@ -51,57 +63,100 @@ display:none;
 
 <div class="card" id="card"></div>
 
+<div class="buttons">
+<button onclick="nearby()">📍 Yaqin</button>
+<button onclick="ai()">🧠 AI</button>
+<button onclick="reload()">🔄</button>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-// STATUS
+// ===== STATUS =====
 function setStatus(t){
 document.getElementById("status").innerText=t;
 console.log(t);
 }
 
-// GLOBAL ERROR CATCH
-window.onerror = function(msg){
-setStatus("❌ JS xato: " + msg);
-};
-
-// MAP INIT SAFE
+// ===== MAP SAFE =====
 let map;
-
 try{
+map=L.map('map').setView([41.3,69.2],6);
 
-map = L.map('map').setView([41.3,69.2],6);
+let layer=L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+).addTo(map);
 
-let layer = L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{maxZoom:19}
-);
-
-layer.addTo(map);
-
-// TILE ERROR HANDLER
 layer.on('tileerror',()=>{
-setStatus("⚠️ Tile yuklanmadi (internet yoki blok)");
+setStatus("⚠️ Internet / tile muammo");
 });
 
-setStatus("✅ Xarita ishlayapti");
+setStatus("✅ Xarita OK");
+
+}catch(e){
+setStatus("❌ Map error");
+}
+
+// ===== DATA =====
+const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+
+let data=[],markers=[];
+
+// CACHE
+let cache=localStorage.getItem("data");
+
+if(cache){
+data=JSON.parse(cache);
+render(data);
+setStatus("⚡ Cache ishladi");
+}
+
+// LOAD SHEET
+async function load(){
+
+try{
+setStatus("📡 Sheet yuklanmoqda");
+
+let res=await fetch(SHEET+"?t="+Date.now());
+let json=await res.json();
+
+data=json.map(x=>({
+name:x.Name || "Noma'lum",
+lat:+x.Lat,
+lng:+x.Lng,
+img:x.OldImage||x.NewImage,
+category:x.Category || "other"
+}));
+
+localStorage.setItem("data",JSON.stringify(data));
+
+setStatus("✅ Sheet OK ("+data.length+")");
+
+render(data);
 
 }catch(e){
 
-setStatus("❌ Leaflet yuklanmadi");
+setStatus("⚠️ Sheet ishlamadi → fallback");
 
-}
-
-// DATA (LOCAL TEST)
-let data=[
+data=[
 {name:"Toshkent",lat:41.3,lng:69.2,img:"https://picsum.photos/400"},
 {name:"Samarqand",lat:39.6,lng:66.9,img:"https://picsum.photos/401"}
 ];
 
-let markers=[];
+render(data);
 
-// RENDER
+}
+
+}
+
+// ===== IMAGE FIX =====
+function fixImg(url){
+if(!url) return "https://picsum.photos/400/300";
+return url+"?v="+Date.now();
+}
+
+// ===== RENDER =====
 function render(arr){
 
 markers.forEach(m=>map.removeLayer(m));
@@ -120,23 +175,72 @@ markers.push(m);
 
 }
 
-// CARD
-function show(p){
-card.style.display="block";
-card.innerHTML=`
-<h3>${p.name}</h3>
-<img src="${p.img}">
-`;
+// ===== DIST =====
+function dist(a,b,c,d){
+return Math.sqrt((a-c)**2+(b-d)**2)*111;
 }
 
-// SEARCH
+// ===== CARD =====
+function show(p){
+
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let d=dist(pos.coords.latitude,pos.coords.longitude,p.lat,p.lng);
+
+card.style.display="block";
+
+card.innerHTML=`
+<h3>${p.name}</h3>
+
+<img src="${fixImg(p.img)}"
+onerror="this.src='https://picsum.photos/400/300'">
+
+<p>📏 ${d.toFixed(1)} km</p>
+`;
+
+});
+
+}
+
+// ===== SEARCH =====
 function search(q){
 q=q.toLowerCase();
-render(data.filter(p=>p.name.toLowerCase().includes(q)));
+render(data.filter(p=>(p.name||"").toLowerCase().includes(q)));
+}
+
+// ===== NEARBY =====
+function nearby(){
+navigator.geolocation.getCurrentPosition(pos=>{
+
+let sorted=[...data].sort((a,b)=>
+dist(pos.coords.latitude,pos.coords.longitude,a.lat,a.lng)-
+dist(pos.coords.latitude,pos.coords.longitude,b.lat,b.lng)
+);
+
+render(sorted.slice(0,5));
+
+});
+}
+
+// ===== AI =====
+function ai(){
+
+// oddiy AI: category + random
+let rand=[...data].sort(()=>0.5-Math.random());
+
+render(rand.slice(0,5));
+
+setStatus("🤖 AI tavsiya berdi");
+
+}
+
+// ===== RELOAD =====
+function reload(){
+load();
 }
 
 // START
-render(data);
+load();
 
 </script>
 
