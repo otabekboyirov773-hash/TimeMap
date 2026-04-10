@@ -4,68 +4,46 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap PRO v3</title>
+<title>TimeMap FINAL STABLE</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 body{margin:0;font-family:sans-serif;}
+#map{height:100vh;width:100%;background:#222;}
 
-/* THEMES */
-.dark{background:#0f172a;color:white;}
-.light{background:white;color:black;}
-
-#map{height:100vh;width:100%;}
-
-/* LOGIN */
-.login{
-position:absolute;top:0;left:0;right:0;bottom:0;
-background:#000;display:flex;flex-direction:column;
-justify-content:center;align-items:center;z-index:2000;
+.status{
+position:absolute;
+top:10px;left:10px;
+background:black;color:#0f0;
+padding:8px;border-radius:10px;
+z-index:1000;
+font-size:12px;
 }
-.login input{padding:10px;margin:5px;border-radius:10px;border:none;}
 
-/* TOP */
 .top{
-position:absolute;top:10px;left:10px;right:10px;
+position:absolute;top:50px;left:10px;right:10px;
 z-index:1000;
 }
 .top input{
-width:100%;padding:12px;border-radius:12px;border:none;
+width:100%;padding:10px;border-radius:10px;border:none;
 }
 
-/* BUTTONS */
-.buttons{
-position:absolute;bottom:10px;left:10px;right:10px;
-display:grid;grid-template-columns:repeat(5,1fr);
-gap:5px;z-index:1000;
-}
-.buttons button{
-padding:10px;border:none;border-radius:10px;
-background:#22c55e;color:white;
-}
-
-/* CARD */
 .card{
 position:absolute;bottom:0;left:0;right:0;
 background:#111;color:white;
 padding:15px;border-radius:20px 20px 0 0;
-display:none;max-height:60%;overflow:auto;
+display:none;
 }
 .card img{width:100%;border-radius:10px;}
 </style>
 </head>
 
-<body class="dark">
-
-<div class="login" id="loginBox">
-<h2>TimeMap</h2>
-<input id="user" placeholder="Login">
-<input id="pass" placeholder="Parol" type="password">
-<button onclick="login()">Kirish</button>
-</div>
+<body>
 
 <div id="map"></div>
+
+<div class="status" id="status">⏳ Yuklanmoqda...</div>
 
 <div class="top">
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
@@ -73,150 +51,92 @@ display:none;max-height:60%;overflow:auto;
 
 <div class="card" id="card"></div>
 
-<div class="buttons">
-<button onclick="nearby()">📍</button>
-<button onclick="ai()">🧠</button>
-<button onclick="top()">🔥</button>
-<button onclick="toggleTheme()">🌗</button>
-<button onclick="logout()">🚪</button>
-</div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-// ===== LOGIN =====
-function login(){
-if(!user.value || !pass.value) return alert("To‘ldir");
-localStorage.setItem("user",user.value);
-loginBox.style.display="none";
+// STATUS
+function setStatus(t){
+document.getElementById("status").innerText=t;
+console.log(t);
 }
-function logout(){
-localStorage.removeItem("user");
-location.reload();
-}
-if(localStorage.getItem("user")) loginBox.style.display="none";
 
-// ===== MAP =====
-let map=L.map('map',{center:[41.3,69.2],zoom:6});
+// GLOBAL ERROR CATCH
+window.onerror = function(msg){
+setStatus("❌ JS xato: " + msg);
+};
 
-// PRIMARY
-let osm=L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+// MAP INIT SAFE
+let map;
+
+try{
+
+map = L.map('map').setView([41.3,69.2],6);
+
+let layer = L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{maxZoom:19}
 );
 
-// BACKUP
-let carto=L.tileLayer(
-'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
-);
+layer.addTo(map);
 
-osm.addTo(map);
-
-// fallback
-osm.on('tileerror',()=>{
-map.removeLayer(osm);
-carto.addTo(map);
+// TILE ERROR HANDLER
+layer.on('tileerror',()=>{
+setStatus("⚠️ Tile yuklanmadi (internet yoki blok)");
 });
 
-// ===== DATA =====
-const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+setStatus("✅ Xarita ishlayapti");
 
-let data=[],markers=[];
+}catch(e){
 
-// CACHE (tezlik)
-let cache=localStorage.getItem("cache");
+setStatus("❌ Leaflet yuklanmadi");
 
-if(cache){
-data=JSON.parse(cache);
-render(data);
 }
 
-fetch(SHEET+"?t="+Date.now())
-.then(r=>r.json())
-.then(d=>{
-data=d.map(x=>({
-name:x.Name,
-lat:+x.Lat,
-lng:+x.Lng,
-img:x.OldImage||x.NewImage
-}));
+// DATA (LOCAL TEST)
+let data=[
+{name:"Toshkent",lat:41.3,lng:69.2,img:"https://picsum.photos/400"},
+{name:"Samarqand",lat:39.6,lng:66.9,img:"https://picsum.photos/401"}
+];
 
-localStorage.setItem("cache",JSON.stringify(data));
-render(data);
-})
-.catch(()=>console.log("Sheet error"));
+let markers=[];
 
-// ===== IMAGE =====
-function fixImg(url){
-if(!url) return "https://picsum.photos/400/300";
-return url+"?v="+Date.now();
-}
-
-// ===== RENDER =====
+// RENDER
 function render(arr){
+
 markers.forEach(m=>map.removeLayer(m));
 markers=[];
+
 arr.forEach(p=>{
 if(!p.lat) return;
+
 let m=L.marker([p.lat,p.lng]).addTo(map);
+
 m.on('click',()=>show(p));
+
 markers.push(m);
+
 });
+
 }
 
-// ===== CARD =====
+// CARD
 function show(p){
 card.style.display="block";
 card.innerHTML=`
 <h3>${p.name}</h3>
-<img src="${fixImg(p.img)}" onerror="this.src='https://picsum.photos/400/300'">
-<button onclick="route(${p.lat},${p.lng})">🚗 Borish</button>
+<img src="${p.img}">
 `;
 }
 
-// ===== ROUTE =====
-function route(lat,lng){
-navigator.geolocation.getCurrentPosition(pos=>{
-window.open(
-`https://www.google.com/maps/dir/${pos.coords.latitude},${pos.coords.longitude}/${lat},${lng}`
-);
-});
-}
-
-// ===== SEARCH =====
+// SEARCH
 function search(q){
 q=q.toLowerCase();
 render(data.filter(p=>p.name.toLowerCase().includes(q)));
 }
 
-// ===== NEARBY =====
-function nearby(){
-navigator.geolocation.getCurrentPosition(pos=>{
-let sorted=[...data].sort((a,b)=>
-Math.hypot(a.lat-pos.coords.latitude,a.lng-pos.coords.longitude)-
-Math.hypot(b.lat-pos.coords.latitude,b.lng-pos.coords.longitude)
-);
-render(sorted.slice(0,5));
-});
-}
-
-// ===== AI =====
-function ai(){
-nearby();
-alert("🤖 AI sizga yaqin joylarni berdi");
-}
-
-// ===== TOP =====
-function top(){
-render([...data].sort(()=>0.5-Math.random()).slice(0,5));
-}
-
-// ===== THEME =====
-function toggleTheme(){
-let b=document.body;
-b.classList.toggle("dark");
-b.classList.toggle("light");
-}
+// START
+render(data);
 
 </script>
 
