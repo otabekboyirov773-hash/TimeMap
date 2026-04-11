@@ -4,42 +4,124 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>TimeMap NEXT LEVEL</title>
+<title>TimeMap PRO UI</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-body{margin:0;font-family:sans-serif;background:#0f172a;color:white;}
+
+/* ===== BASE ===== */
+body{
+margin:0;
+font-family:system-ui;
+background:#0f172a;
+color:white;
+}
+
 #map{height:100vh;}
 
-/* UI */
-.top{position:absolute;top:10px;left:10px;right:10px;z-index:1000;}
-.top input{width:100%;padding:10px;border-radius:10px;border:none;}
-
-.buttons{
-position:absolute;bottom:10px;left:10px;right:10px;
-display:grid;grid-template-columns:repeat(5,1fr);
-gap:5px;z-index:1000;
-}
-.buttons button{
-padding:10px;border:none;border-radius:10px;
-background:#22c55e;color:white;
+/* ===== TOP SEARCH ===== */
+.searchBox{
+position:absolute;
+top:15px;
+left:10px;
+right:10px;
+z-index:1000;
 }
 
+.searchBox input{
+width:100%;
+padding:14px;
+border-radius:14px;
+border:none;
+font-size:16px;
+background:rgba(0,0,0,0.6);
+color:white;
+backdrop-filter:blur(10px);
+}
+
+/* ===== ACTION BUTTONS ===== */
+.actions{
+position:absolute;
+bottom:20px;
+left:10px;
+right:10px;
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:10px;
+z-index:1000;
+}
+
+.actions button{
+padding:12px;
+border:none;
+border-radius:14px;
+background:rgba(0,0,0,0.6);
+color:white;
+font-weight:bold;
+backdrop-filter:blur(10px);
+}
+
+/* ===== CARD ===== */
 .card{
-position:absolute;bottom:0;left:0;right:0;
-background:#111;padding:15px;
-border-radius:20px 20px 0 0;
+position:absolute;
+bottom:0;
+left:0;
+right:0;
+background:rgba(0,0,0,0.85);
+backdrop-filter:blur(20px);
+border-radius:25px 25px 0 0;
+padding:15px;
 display:none;
+max-height:70%;
+overflow:auto;
+z-index:1000;
 }
-.card img{width:100%;border-radius:10px;}
 
-.admin{
-position:absolute;top:60px;left:10px;right:10px;
-background:#111;padding:10px;border-radius:10px;
-display:none;
+.card img{
+width:100%;
+border-radius:15px;
+margin-top:10px;
 }
-.admin input{width:100%;margin:5px 0;padding:8px;border:none;border-radius:8px;}
+
+/* ===== BADGES ===== */
+.badge{
+display:inline-block;
+padding:5px 10px;
+border-radius:10px;
+font-size:12px;
+margin-top:5px;
+background:#22c55e;
+}
+
+.vip{
+background:gold;
+color:black;
+}
+
+/* ===== CTA ===== */
+.cta{
+margin-top:10px;
+padding:12px;
+background:#22c55e;
+border-radius:12px;
+text-align:center;
+font-weight:bold;
+}
+
+/* ===== STATUS ===== */
+.status{
+position:absolute;
+top:70px;
+left:10px;
+background:black;
+color:#0f0;
+padding:6px;
+border-radius:8px;
+z-index:1000;
+font-size:12px;
+}
+
 </style>
 </head>
 
@@ -47,59 +129,54 @@ display:none;
 
 <div id="map"></div>
 
-<div class="top">
+<div class="searchBox">
 <input placeholder="🔍 Qidiruv..." oninput="search(this.value)">
 </div>
 
+<div class="status" id="status">⏳ Yuklanmoqda...</div>
+
 <div class="card" id="card"></div>
 
-<div class="admin" id="adminBox">
-
-<input id="pass" placeholder="Parol">
-<button onclick="login()">Kirish</button>
-
-<div id="panel" style="display:none;">
-
-<h3>➕ Joy qo‘shish</h3>
-<input id="name" placeholder="Nom">
-<input id="lat" placeholder="Lat">
-<input id="lng" placeholder="Lng">
-<input id="img" placeholder="Rasm">
-<input id="vip" placeholder="VIP (ha/yoq)">
-<button onclick="addPlace()">Qo‘shish</button>
-
-<hr>
-
-<input id="challengeInput" placeholder="Challenge">
-<button onclick="saveChallenge()">Saqlash</button>
-
-</div>
-
-</div>
-
-<div class="buttons">
+<div class="actions">
 <button onclick="nearby()">📍</button>
 <button onclick="ai()">🧠</button>
-<button onclick="toggle3D()">🧭</button>
-<button onclick="toggleAdmin()">⚙️</button>
-<button onclick="showChallenge()">🎯</button>
+<button onclick="topPlaces()">🔥</button>
+<button onclick="showAd()">💰</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 
-// MAP
+// ===== STATUS =====
+function setStatus(t){
+status.innerText=t;
+}
+
+// ===== MAP =====
 let map=L.map('map').setView([41.3,69.2],6);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let layer=L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+).addTo(map);
 
-// DATA
-let data=[],markers=[],routeLine;
-let local=JSON.parse(localStorage.getItem("places")||"[]");
+layer.on('tileerror',()=>setStatus("⚠️ Internet muammo"));
 
-// LOAD
-fetch("https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1")
+// ===== DATA =====
+let data=[],markers=[];
+
+// SHEET + CACHE
+const SHEET="https://opensheet.elk.sh/1Hedps20_fmQ9CB6QavBVedQNtdk7f6Zb8P8fkxeH70w/1";
+
+let cache=localStorage.getItem("cache");
+
+if(cache){
+data=JSON.parse(cache);
+render(data);
+setStatus("⚡ Cache");
+}
+
+fetch(SHEET+"?t="+Date.now())
 .then(r=>r.json())
 .then(d=>{
 data=d.map(x=>({
@@ -107,18 +184,21 @@ name:x.Name,
 lat:+x.Lat,
 lng:+x.Lng,
 img:x.OldImage||x.NewImage,
-vip:x.VIP==="ha"
+rating:Math.random()*5,
+vip:Math.random()>0.7
 }));
-merge();
-})
-.catch(()=>merge());
-
-function merge(){
-data=[...data,...local];
+localStorage.setItem("cache",JSON.stringify(data));
 render(data);
+setStatus("✅ Yangilandi");
+})
+.catch(()=>setStatus("⚠️ Sheet ishlamadi"));
+
+// ===== IMAGE =====
+function imgFix(url){
+return url?url+"?v="+Date.now():"https://picsum.photos/400/300";
 }
 
-// RENDER
+// ===== RENDER =====
 function render(arr){
 
 markers.forEach(m=>map.removeLayer(m));
@@ -126,57 +206,47 @@ markers=[];
 
 arr.forEach(p=>{
 
-let icon = p.vip
-? L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1828/1828884.png",iconSize:[30,30]})
-: undefined;
+let icon=p.vip
+?L.icon({iconUrl:"https://cdn-icons-png.flaticon.com/512/1828/1828884.png",iconSize:[30,30]})
+:undefined;
 
 let m=L.marker([p.lat,p.lng],icon?{icon}:{}).addTo(map);
 
-m.on('click',()=>show(p));
+m.on('click',()=>showCard(p));
 
 markers.push(m);
 
 });
+
 }
 
-// CARD
-function show(p){
+// ===== CARD =====
+function showCard(p){
 
 card.style.display="block";
 
 card.innerHTML=`
-<h3>${p.name} ${p.vip?"⭐":""}</h3>
-<img src="${p.img||'https://picsum.photos/400'}">
-<button onclick="route(${p.lat},${p.lng})">🚗 Yo‘l</button>
+<h2>${p.name} ${p.vip?"<span class='badge vip'>VIP</span>":""}</h2>
+
+<img src="${imgFix(p.img)}">
+
+<div class="badge">⭐ ${p.rating.toFixed(1)}</div>
+<div class="badge">🔥 Trend</div>
+
+<div class="cta">🚀 Shu joyga borish</div>
+
+<div class="cta">💰 Biznesingizni reklama qiling</div>
 `;
 
 }
 
-// ROUTE (ICHIDA)
-function route(lat,lng){
-
-navigator.geolocation.getCurrentPosition(pos=>{
-
-let user=[pos.coords.latitude,pos.coords.longitude];
-let dest=[lat,lng];
-
-if(routeLine) map.removeLayer(routeLine);
-
-routeLine=L.polyline([user,dest],{color:"lime"}).addTo(map);
-
-map.fitBounds(routeLine.getBounds());
-
-});
-
-}
-
-// SEARCH
+// ===== SEARCH =====
 function search(q){
 q=q.toLowerCase();
 render(data.filter(p=>p.name.toLowerCase().includes(q)));
 }
 
-// NEARBY
+// ===== NEARBY =====
 function nearby(){
 navigator.geolocation.getCurrentPosition(pos=>{
 let sorted=[...data].sort((a,b)=>
@@ -187,53 +257,24 @@ render(sorted.slice(0,5));
 });
 }
 
-// AI
+// ===== AI =====
 function ai(){
+render([...data].sort(()=>0.5-Math.random()).slice(0,5));
+setStatus("🤖 AI tavsiya berdi");
+}
+
+// ===== TOP =====
+function topPlaces(){
 render([...data].sort(()=>0.5-Math.random()).slice(0,5));
 }
 
-// ADMIN
-function toggleAdmin(){
-adminBox.style.display=
-adminBox.style.display==="block"?"none":"block";
-}
-
-function login(){
-if(pass.value==="1234") panel.style.display="block";
-}
-
-// ADD
-function addPlace(){
-let p={
-name:name.value,
-lat:+lat.value,
-lng:+lng.value,
-img:img.value,
-vip:vip.value==="ha"
-};
-local.push(p);
-localStorage.setItem("places",JSON.stringify(local));
-merge();
-}
-
-// CHALLENGE
-function saveChallenge(){
-localStorage.setItem("challenge",challengeInput.value);
-}
-
-function showChallenge(){
-alert(localStorage.getItem("challenge")||"yoq");
-}
-
-// 3D EFFECT
-let is3D=false;
-function toggle3D(){
-let mapEl=document.getElementById("map");
-is3D=!is3D;
-mapEl.style.transform=is3D?"perspective(800px) rotateX(45deg)":"none";
+// ===== ADS =====
+function showAd(){
+alert("💰 Reklama berish uchun biz bilan bog‘laning");
 }
 
 </script>
 
 </body>
 </html>
+
