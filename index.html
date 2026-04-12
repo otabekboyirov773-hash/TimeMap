@@ -3,118 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap | Portal</title>
+    <title>TimeMap | Portal Pro Max</title>
     
-    <!-- Kutubxonalar - Eng barqaror havolalar -->
+    <!-- Kutubxonalar - Barqaror HTTPS bog'lamalar -->
     <link rel="stylesheet" href="https://jsdelivr.net" />
     <script src="https://jsdelivr.net"></script>
     <script src="https://jsdelivr.net"></script>
     
     <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.9); }
-        body { margin: 0; padding: 0; background: #010409; color: white; font-family: sans-serif; overflow: hidden; }
+        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
         
-        /* Xarita muammosini hal qilish uchun qat'iy o'lchamlar */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; color: white; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        
+        /* Xarita - Qat'iy o'lcham va joylashuv */
         #map { 
-            position: absolute; 
-            top: 0; bottom: 0; left: 0; right: 0; 
-            z-index: 1; 
-            background: #000;
+            position: absolute; top: 0; bottom: 0; left: 0; right: 0; 
+            z-index: 1; background: #010409;
+            transition: filter 0.8s ease, transform 0.8s ease;
         }
-        
-        .ui-element { z-index: 1000; position: absolute; }
-        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; }
 
-        .top-nav { top: 20px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 400px; padding: 10px 15px; display: flex; }
-        .search-bar { width: 100%; background: none; border: none; color: white; outline: none; }
+        /* Portal Pulsatsiyasi (Bonus Vizual) */
+        #map::after {
+            content: ''; position: absolute; top: 50%; left: 50%; width: 250px; height: 250px;
+            background: radial-gradient(circle, rgba(0,243,255,0.15) 0%, transparent 70%);
+            transform: translate(-50%, -50%); pointer-events: none; z-index: 2;
+            animation: pulsePortal 4s infinite ease-in-out;
+        }
+        @keyframes pulsePortal {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+            50% { transform: translate(-50%, -50%) scale(1.6); opacity: 0.1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+        }
 
-        .time-box { right: 20px; top: 50%; transform: translateY(-50%); padding: 20px 10px; display: flex; flex-direction: column; align-items: center; }
-        .v-range { appearance: slider-vertical; width: 10px; height: 250px; background: var(--gold); }
+        /* UI Elementlar */
+        .ui { position: absolute; z-index: 1000; }
+        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
 
-        .dock { bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
-        .btn { width: 55px; height: 55px; border-radius: 50%; border: none; cursor: pointer; color: white; font-size: 20px; }
-        .btn-ai { background: linear-gradient(45deg, #00f3ff, #bc00ff); box-shadow: 0 0 15px rgba(0,243,255,0.5); }
+        .top-nav { top: 20px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 450px; padding: 12px 20px; display: flex; align-items: center; }
+        .search-bar { width: 100%; background: none; border: none; color: white; outline: none; font-size: 16px; }
 
-        #card { bottom: 90px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 350px; padding: 20px; display: none; }
-        
-        /* Era filters */
-        .past { filter: sepia(0.6) contrast(1.1); }
-        .future { filter: hue-rotate(160deg) saturate(1.5); }
-        .coin-box { top: 25px; right: 20px; padding: 8px 15px; border: 1px solid var(--gold); color: var(--gold); font-weight: bold; }
+        .time-engine { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
+        .v-slider { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+
+        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
+        .btn { width: 65px; height: 65px; border-radius: 50%; border: none; cursor: pointer; font-size: 26px; color: white; transition: 0.3s; display: flex; align-items: center; justify-content: center; }
+        .btn-ai { background: linear-gradient(135deg, #00f3ff, #bc00ff); box-shadow: 0 0 20px rgba(0,243,255,0.5); }
+        .btn:active { transform: scale(0.9); }
+
+        /* Ma'lumot Kartasi */
+        .portal-card { bottom: 120px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; padding: 25px; display: none; animation: portalIn 0.5s ease; }
+        @keyframes portalIn { from { opacity: 0; transform: translate(-50%, 50px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+        /* Filtrlar */
+        .era-past { filter: sepia(0.6) contrast(1.1) brightness(0.9) !important; }
+        .era-future { filter: hue-rotate(170deg) saturate(1.6) brightness(1.1) !important; }
+        .coin-counter { top: 30px; right: 30px; padding: 10px 20px; border: 2px solid var(--gold); color: var(--gold); font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
-    <div class="ui-element coin-box glass">🪙 <span id="tc">500</span> TC</div>
-    <div class="ui-element top-nav glass"><input class="search-bar" placeholder="Qidiruv..." oninput="goSearch(this.value)"></div>
-
-    <div class="ui-element time-box glass">
-        <b id="year">2024</b>
-        <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="changeYear(this.value)">
+    <div class="ui coin-counter glass">🪙 <span id="tcBalance">500</span> TC</div>
+    
+    <div class="ui top-nav glass">
+        <input class="search-bar" placeholder="Vaqt va makonni kashf eting..." oninput="searchMap(this.value)">
     </div>
 
-    <div id="card" class="ui-element glass"></div>
+    <div class="ui time-engine glass">
+        <span id="yearVal" style="color:var(--gold); font-weight:bold; font-size:24px; margin-bottom:20px;">2024</span>
+        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
+    </div>
 
-    <div class="ui-element dock">
-        <button class="btn glass" onclick="findMe()">📍</button>
+    <div id="infoCard" class="ui portal-card glass">
+        <div id="cardBody"></div>
+        <button onclick="closeCard()" style="width:100%; margin-top:20px; padding:15px; border:none; border-radius:12px; background:var(--gold); color:black; font-weight:bold; cursor:pointer;">PORTALNI YOPISH</button>
+    </div>
+
+    <div class="ui dock">
+        <button class="btn glass" onclick="findLocation()">📍</button>
         <button class="btn btn-ai" onclick="runAI()">🧠</button>
         <button class="btn glass" onclick="toggle3D()">🧭</button>
     </div>
 
     <script>
-        // SUPABASE CONFIG
-        const SURL = "https://supabase.co";
-        const SKEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const supabaseClient = supabase.createClient(SURL, SKEY);
+        // 1. SUPABASE CONNECTION (Sizning loyihangizga sozlangan)
+        const SB_URL = "https://supabase.co";
+        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
+        const _db = supabase.createClient(SB_URL, SB_KEY);
 
-        // MAP INIT - Muhim: Leaflet uchun kadrni to'g'irlash
-        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.3, 69.2], 11);
-        
-        // GitHub uchun eng barqaror xarita qatlami
+        // 2. MAP SETUP
+        let map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.31, 69.24], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        let markerLayer = L.layerGroup().addTo(map);
 
-        var markers = L.layerGroup().addTo(map);
+        // 3. VAQT SADOSI
+        function playSfx(y) {
+            try {
+                let ctx = new (window.AudioContext || window.webkitAudioContext)();
+                let osc = ctx.createOscillator();
+                let g = ctx.createGain();
+                osc.type = y > 2024 ? 'sawtooth' : 'sine';
+                osc.frequency.setValueAtTime(y / 4, ctx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.1);
+                osc.connect(g); g.connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.1);
+            } catch(e) {}
+        }
 
-        // DATA LOADER
-        async function loadPlaces(y) {
-            const { data, error } = await supabaseClient.from('places').select('*');
-            if (data) {
-                markers.clearLayers();
-                data.filter(p => Math.abs(p.era - y) <= 100).forEach(p => {
-                    let m = L.marker([p.lat, p.lng]).addTo(markers);
-                    m.on('click', () => {
-                        let c = document.getElementById('card');
-                        c.style.display = "block";
-                        c.innerHTML = `<h3>${p.name} (${p.era})</h3><p>${p.description}</p><button onclick="this.parentElement.style.display='none'">Yopish</button>`;
+        // 4. VAQT MASHINASI MANTIQI
+        async function timeTravel(year) {
+            document.getElementById('yearVal').innerText = year;
+            let m = document.getElementById('map');
+            if(year < 1850) m.className = "era-past";
+            else if(year > 2060) m.className = "era-future";
+            else m.className = "";
+            
+            playSfx(year);
+            const { data } = await _db.from('places').select('*');
+            if(data) {
+                markerLayer.clearLayers();
+                data.filter(p => Math.abs(p.era - year) <= 100).forEach(p => {
+                    let mark = L.marker([p.lat, p.lng]).addTo(markerLayer);
+                    mark.on('click', () => {
+                        document.getElementById('infoCard').style.display = "block";
+                        document.getElementById('cardBody').innerHTML = `
+                            <h2 style="color:var(--gold);margin:0">${p.name}</h2>
+                            <p style="color:var(--neon);font-size:12px">${p.era}-yil</p>
+                            <img src="${p.image_url || 'https://picsum.photos'}" style="width:100%; border-radius:15px; margin:15px 0;">
+                            <p>${p.description}</p>
+                        `;
                     });
                 });
             }
         }
 
-        function changeYear(v) {
-            document.getElementById('year').innerText = v;
-            let m = document.getElementById('map');
-            if(v < 1850) m.className = "past"; else if(v > 2060) m.className = "future"; else m.className = "";
-            loadPlaces(v);
+        // 5. YORDAMCHI FUNKSIYALAR
+        function toggle3D() {
+            let mapDiv = document.getElementById('map');
+            mapDiv.style.transform = mapDiv.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg)";
         }
+        function findLocation() { map.locate({setView: true, maxZoom: 15}); }
+        function closeCard() { document.getElementById('infoCard').style.display = "none"; }
+        function runAI() { alert("TimeMap AI: 1400-yilga o'tib Amir Temur davrini o'rganing!"); }
 
-        // OTHER TOOLS
-        function findMe() { map.locate({setView: true, maxZoom: 14}); }
-        function toggle3D() { 
-            let m = document.getElementById('map');
-            m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1000px) rotateX(45deg)";
-        }
-        function runAI() { alert("AI: Tarixiy nuqtalarni kashf qilish uchun 1400-yilga o'ting!"); }
-
-        // Start
-        setTimeout(() => { map.invalidateSize(); changeYear(2024); }, 500);
+        // GitHub Pages kadrni to'g'irlash
+        window.onload = () => {
+            setTimeout(() => { map.invalidateSize(); timeTravel(2024); }, 400);
+        };
     </script>
 </body>
 </html>
-
-
-
-
-
