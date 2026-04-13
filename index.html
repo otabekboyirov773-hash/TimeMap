@@ -1,129 +1,76 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>TimeMap Final</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap Portal | Final Pro</title>
-    
-    <!-- Kutubxonalar - Qat'iy HTTPS manzillar -->
+    <!-- Faqat eng ishonchli manbalar -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
-    <script src="https://jsdelivr.net"></script>
-    
     <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
-        
-        /* MUHIM: Xarita qora bo'lmasligi uchun qat'iy o'lchamlar */
-        html, body { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
-        
-        #map { 
-            position: absolute; 
-            top: 0; bottom: 0; left: 0; right: 0; 
-            height: 100vh !important; 
-            width: 100vw !important;
-            background: #010409;
-            z-index: 1; 
-        }
-        
-        .ui { z-index: 1000; position: absolute; }
-        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-
-        .time-panel { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
-        .v-slider { appearance: slider-vertical; width: 15px; height: 250px; background: var(--gold); border-radius: 5px; cursor: pointer; }
-
-        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
-        .btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; color: white; font-size: 24px; display: flex; align-items:center; justify-content:center; }
-        .btn-ai { background: linear-gradient(135deg, #00f3ff, #7000ff); box-shadow: 0 0 20px rgba(0,243,255,0.4); }
-
-        /* Era effektlari */
-        .past { filter: sepia(0.6) contrast(1.1) brightness(0.9); }
-        .future { filter: hue-rotate(160deg) saturate(1.5) brightness(1.1); }
-        .coin-box { top: 25px; right: 25px; padding: 10px 20px; border: 1.5px solid var(--gold); color: var(--gold); font-weight: bold; }
+        body { margin: 0; padding: 0; background: black; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
+        .ui { position: absolute; z-index: 1000; background: rgba(0,0,0,0.8); color: gold; padding: 15px; border-radius: 10px; top: 20px; right: 20px; text-align: center; border: 1px solid gold; }
+        input { width: 200px; cursor: pointer; }
     </style>
 </head>
-<body onmousedown="startAudio()"> <!-- Ekranni birinchi marta bosganda audio yoqiladi -->
+<body onmousedown="initAudio()">
 
     <div id="map"></div>
 
-    <div class="ui coin-box glass">🪙 <span id="tc">500</span> TC</div>
-
-    <div class="ui time-panel glass">
-        <span id="yearDisplay" style="color:var(--gold); font-weight:bold; font-size:22px; margin-bottom:15px;">2024</span>
-        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="changeEra(this.value)">
-    </div>
-
-    <div class="ui dock">
-        <button class="btn glass" onclick="getLocation()">📍</button>
-        <button class="btn btn-ai" onclick="alert('AI: Tarixni kashf etish uchun slayderni suring!')">🧠</button>
-        <button class="btn glass" onclick="toggle3D()">🧭</button>
+    <div class="ui">
+        <div id="yearDisplay" style="font-size: 24px; font-weight: bold;">2024</div>
+        <input type="range" min="1400" max="2100" value="2024" oninput="moveTime(this.value)">
+        <p style="font-size: 10px;">EKRANGA BOSING VA SURING</p>
     </div>
 
     <script>
-        // SUPABASE
-        const S_URL = "https://supabase.co";
-        const S_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const supabaseClient = supabase.createClient(S_URL, S_KEY);
-
-        // MAP
-        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([39.65, 66.97], 12);
+        // XARITANI ISHGA TUSHIRISH
+        var map = L.map('map', {zoomControl: false}).setView([39.65, 66.97], 13);
+        
+        // OSM xaritasi
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // AUDIO
-        let audioCtx = null;
-        function startAudio() {
+        // OVOZ TIZIMI
+        var audioCtx;
+        function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        function playSound(year) {
+        function playSound(freq, type) {
             if (!audioCtx) return;
-            let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
+            var osc = audioCtx.createOscillator();
+            var g = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+        }
 
-            if (year < 1850) { 
-                osc.type = 'square'; // Ot tuyoqlari effekti
-                osc.frequency.setValueAtTime(30, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
-            } else if (year > 2060) {
-                osc.type = 'sawtooth'; // Uchar mashina effekti
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.4);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+        function moveTime(v) {
+            document.getElementById('yearDisplay').innerText = v;
+            
+            // O'tmish (Otlar)
+            if(v < 1850) {
+                playSound(40, 'square');
+                document.getElementById('map').style.filter = "sepia(0.8)";
+            } 
+            // Kelajak (Mashinalar)
+            else if(v > 2060) {
+                playSound(150 + (v-2060), 'sawtooth');
+                document.getElementById('map').style.filter = "hue-rotate(180deg) brightness(1.2)";
             } else {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+                document.getElementById('map').style.filter = "none";
             }
-
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
         }
 
-        function changeEra(val) {
-            document.getElementById('yearDisplay').innerText = val;
-            let mDiv = document.getElementById('map');
-            if(val < 1850) mDiv.className = "past"; 
-            else if(val > 2060) mDiv.className = "future"; 
-            else mDiv.className = "";
-            playSound(val);
-        }
-
-        function getLocation() { map.locate({setView: true, maxZoom: 15}); }
-        function toggle3D() { 
-            let m = document.getElementById('map');
-            m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1000px) rotateX(45deg)";
-        }
-
-        // MAJBURIY UYG'OTISH (Qora ekranga qarshi)
-        window.onload = () => {
-            setTimeout(() => { map.invalidateSize(); }, 500);
-            setInterval(() => { map.invalidateSize(); }, 2000); // Har 2 soniyada tekshiradi
+        // QORA EKRANNI DAVOLASH
+        window.onload = function() {
+            setTimeout(function() { 
+                map.invalidateSize(); 
+            }, 500);
         };
     </script>
 </body>
 </html>
-
-
