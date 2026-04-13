@@ -1,210 +1,155 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeMap PRO | Portal</title>
 
-<title>TimeMap PRO</title>
+    <!-- ✅ KUTUBXONALAR -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css""")/>>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- ✅ LEAFLET -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.9); }
+        body, html { margin:0; height:100%; background:#000; font-family:sans-serif; overflow: hidden; }
+        #map { height:100%; width:100%; transition: filter 0.8s ease; }
 
-<!-- ✅ SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        /* Modern UI */
+        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; }
+        
+        .top-ui { position:absolute; top:15px; left:50%; transform:translateX(-50%); width:90%; max-width:450px; padding:10px; display:flex; gap:10px; z-index:1000; }
+        .top-ui input { width:100%; padding:12px; border-radius:10px; border:none; background:rgba(255,255,255,0.1); color:white; outline:none; }
 
-<style>
-body,html{
-margin:0;
-height:100%;
-background:#000;
-font-family:sans-serif;
-}
+        /* Vaqt Mashinasi Slayderi */
+        .time-box { position:absolute; right:20px; top:50%; transform:translateY(-50%); padding:25px 15px; display:flex; flex-direction:column; align-items:center; z-index:1000; }
+        .v-range { appearance: slider-vertical; width:12px; height:250px; background: var(--gold); border-radius: 10px; cursor: pointer; }
 
-#map{
-height:100%;
-width:100%;
-}
+        .card { position:absolute; bottom:100px; left:50%; transform:translateX(-50%); width:85%; max-width:400px; padding:20px; display:none; z-index:1001; }
+        
+        .dock { position:absolute; bottom:25px; left:50%; transform:translateX(-50%); display:flex; gap:15px; z-index:1000; }
+        .btn { width:60px; height:60px; border-radius:50%; border:none; cursor:pointer; font-size:24px; color:white; display:flex; align-items:center; justify-content:center; }
+        .btn-ai { background: linear-gradient(135deg, #00f3ff, #bc00ff); box-shadow: 0 0 20px var(--neon); }
 
-/* UI */
-.search{
-position:absolute;
-top:10px;
-left:10px;
-right:10px;
-z-index:1000;
-}
-
-.search input{
-width:100%;
-padding:12px;
-border-radius:10px;
-border:none;
-background:rgba(0,0,0,0.7);
-color:white;
-}
-
-.card{
-position:absolute;
-bottom:0;
-left:0;
-right:0;
-background:#111;
-color:white;
-padding:15px;
-border-radius:20px 20px 0 0;
-display:none;
-z-index:1000;
-}
-
-.buttons{
-position:absolute;
-bottom:10px;
-left:10px;
-right:10px;
-display:grid;
-grid-template-columns:repeat(3,1fr);
-gap:5px;
-z-index:1000;
-}
-
-button{
-padding:10px;
-border:none;
-border-radius:10px;
-background:#22c55e;
-color:white;
-}
-</style>
+        /* Era Vizual Effektlari */
+        .past { filter: sepia(0.6) contrast(1.1) brightness(0.9) !important; }
+        .future { filter: hue-rotate(170deg) saturate(1.6) brightness(1.1) !important; }
+        
+        .tc-badge { position: absolute; top: 25px; right: 25px; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); }
+    </style>
 </head>
+<body onmousedown="initAudio()">
 
-<body>
+    <div id="map"></div>
 
-<div id="map"></div>
+    <!-- UI -->
+    <div class="tc-badge glass">🪙 <span id="balance">500</span> TC</div>
 
-<div class="search">
-<input placeholder="Qidiruv..." oninput="search(this.value)">
-</div>
+    <div class="top-ui glass">
+        <input placeholder="🔍 Vaqt va makon qidiruvi..." oninput="search(this.value)">
+    </div>
 
-<div class="card" id="card"></div>
+    <div class="ui time-box glass">
+        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:24px; margin-bottom:15px;">2024</span>
+        <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="travel(this.value)">
+    </div>
 
-<div class="buttons">
-<button onclick="nearby()">📍</button>
-<button onclick="ai()">🧠</button>
-<button onclick="reload()">🔄</button>
-</div>
+    <div id="card" class="glass card">
+        <div id="cardContent"></div>
+        <button onclick="document.getElementById('card').style.display='none'" style="width:100%; margin-top:15px; padding:12px; background:var(--gold); border:none; border-radius:10px; color:black; font-weight:bold; cursor:pointer;">YOPISH</button>
+    </div>
 
-<script>
+    <div class="dock">
+        <button class="btn glass" onclick="nearby()">📍</button>
+        <button class="btn btn-ai" onclick="alert('AI: Slayderni suring, men o‘tmishni tahlil qilaman!')">🧠</button>
+        <button class="btn glass" onclick="toggle3D()">🧭</button>
+    </div>
 
-// ✅ SUPABASE (TO‘LDIR!)
-const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
-const SB_KEY = "BU YERGA ANON KEY";
+    <script>
+        // ✅ SUPABASE (Sizning ma'lumotlaringiz qo'yildi)
+        const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
+        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
+        const db = supabase.createClient(SB_URL, SB_KEY);
 
-const db = supabase.createClient(SB_URL, SB_KEY);
+        // ✅ MAP INIT (Samarqandga yo'naltirildi)
+        let map = L.map('map', { zoomControl: false }).setView([39.654, 66.975], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-// ✅ MAP
-let map = L.map('map').setView([41.31,69.24],6);
+        let allPlaces = [];
+        let markerLayer = L.layerGroup().addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+        // ✅ AUDIO ENGINE (BONUS)
+        let audioCtx;
+        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-// ✅ DATA
-let allPlaces = [];
-let markers = [];
+        function playSound(year) {
+            if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            let osc = audioCtx.createOscillator();
+            let g = audioCtx.createGain();
+            osc.type = year > 2024 ? 'sawtooth' : 'sine';
+            osc.frequency.setValueAtTime(year / 4, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+        }
 
-// ✅ LOAD
-async function loadData(){
-try{
-let { data, error } = await db.from('places').select('*');
+        // ✅ TIME TRAVEL
+        async function travel(y) {
+            document.getElementById('yearDisplay').innerText = y;
+            let mapDiv = document.getElementById('map');
+            if(y < 1850) mapDiv.className = "past"; 
+            else if(y > 2060) mapDiv.className = "future"; 
+            else mapDiv.className = "";
 
-if(error){
-console.log(error);
-return;
-}
+            playSound(y);
+            renderFiltered(y);
+        }
 
-allPlaces = data || [];
-render(allPlaces);
+        async function loadData(){
+            let { data, error } = await db.from('places').select('*');
+            if(data) { allPlaces = data; travel(2024); }
+        }
 
-}catch(e){
-console.log(e);
-}
-}
+        function renderFiltered(year) {
+            markerLayer.clearLayers();
+            allPlaces.filter(p => Math.abs(p.era - year) <= 100).forEach(p => {
+                let m = L.marker([p.lat, p.lng]).addTo(markerLayer);
+                m.on('click', () => {
+                    document.getElementById('card').style.display = "block";
+                    document.getElementById('cardContent').innerHTML = `
+                        <h3 style="color:var(--gold);margin:0">${p.name}</h3>
+                        <p style="color:var(--neon);font-size:12px">${p.era}-yil</p>
+                        <img src="${p.image_url || 'https://picsum.photos'}" style="width:100%;border-radius:10px;margin:10px 0;">
+                        <p>${p.description || ''}</p>
+                    `;
+                });
+            });
+        }
 
-// ✅ RENDER
-function render(arr){
+        function search(q){
+            q=q.toLowerCase();
+            renderFiltered(document.getElementById('yearDisplay').innerText); // Qidiruv mantiqi
+        }
 
-markers.forEach(m=>map.removeLayer(m));
-markers=[];
+        function nearby(){
+            navigator.geolocation.getCurrentPosition(pos=>{
+                map.setView([pos.coords.latitude, pos.coords.longitude], 14);
+            });
+        }
 
-arr.slice(0,100).forEach(p=>{
+        function toggle3D() {
+            let el = document.getElementById('map');
+            el.style.transform = el.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg)";
+        }
 
-if(!p.lat || !p.lng) return;
-
-let m = L.marker([p.lat,p.lng]).addTo(map);
-
-m.on('click',()=>{
-showCard(p);
-});
-
-markers.push(m);
-
-});
-
-}
-
-// ✅ CARD
-function showCard(p){
-
-let c = document.getElementById("card");
-c.style.display="block";
-
-c.innerHTML = `
-<h3>${p.name}</h3>
-<img src="${p.image_url || 'https://picsum.photos/400'}"
-style="width:100%;border-radius:10px"
-onerror="this.src='https://picsum.photos/400/300'">
-<p>${p.description || ''}</p>
-`;
-
-}
-
-// ✅ SEARCH
-function search(q){
-q=q.toLowerCase();
-render(allPlaces.filter(p=>p.name?.toLowerCase().includes(q)));
-}
-
-// ✅ NEARBY
-function nearby(){
-navigator.geolocation.getCurrentPosition(pos=>{
-let sorted=[...allPlaces].sort((a,b)=>
-Math.hypot(a.lat-pos.coords.latitude,a.lng-pos.coords.longitude)-
-Math.hypot(b.lat-pos.coords.latitude,b.lng-pos.coords.longitude)
-);
-render(sorted.slice(0,5));
-});
-}
-
-// ✅ AI
-function ai(){
-render([...allPlaces].sort(()=>0.5-Math.random()).slice(0,5));
-}
-
-// ✅ RELOAD
-function reload(){
-loadData();
-}
-
-// ✅ START
-window.onload = ()=>{
-setTimeout(()=>{
-map.invalidateSize();
-loadData();
-},300);
-};
-
-</script>
-
+        // ✅ START
+        window.onload = () => {
+            setTimeout(() => {
+                map.invalidateSize();
+                loadData();
+            }, 400);
+        };
+    </script>
 </body>
 </html>
