@@ -1,21 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
     <meta charset="utf-8" />
-    <title>TimeMap Final Pro</title>
+    <title>TimeMap | Samarkand Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Leaflet - Eng ishonchli havolalar -->
+    
+    <!-- Kutubxonalar - To'liq manzillar bilan -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
-    <!-- Supabase -->
     <script src="https://jsdelivr.net"></script>
+
     <style>
         body { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: sans-serif; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100vh; background: #010409; }
-        .ui { position: absolute; z-index: 1000; top: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #ffd700; padding: 20px; border-radius: 15px; border: 1px solid #ffd700; text-align: center; backdrop-filter: blur(10px); }
-        input[type=range] { width: 150px; appearance: slider-vertical; height: 200px; margin-top: 10px; cursor: pointer; background: #ffd700; }
-        .past { filter: sepia(0.8) contrast(1.1); }
-        .future { filter: hue-rotate(180deg) brightness(1.2); }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100vh; background: #010409; z-index: 1; }
+        
+        .ui { position: absolute; z-index: 1000; top: 20px; right: 20px; background: rgba(10, 15, 30, 0.9); color: #ffd700; padding: 20px; border-radius: 20px; border: 1px solid rgba(255,215,0,0.3); text-align: center; backdrop-filter: blur(15px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        input[type=range] { width: 12px; appearance: slider-vertical; height: 250px; margin-top: 15px; cursor: pointer; background: #ffd700; border-radius: 5px; }
+        
+        /* Era effektlari */
+        .past { filter: sepia(0.8) contrast(1.1) brightness(0.9) !important; }
+        .future { filter: hue-rotate(180deg) brightness(1.2) saturate(1.5) !important; }
+        
+        .bonus-btn { background: linear-gradient(45deg, #ffd700, #b8860b); border: none; padding: 10px 20px; border-radius: 10px; color: black; font-weight: bold; cursor: pointer; margin-top: 10px; width: 100%; }
     </style>
 </head>
 <body onmousedown="initAudio()">
@@ -23,63 +30,84 @@
     <div id="map"></div>
 
     <div class="ui">
-        <div id="yearDisplay" style="font-size: 26px; font-weight: bold;">2024</div>
+        <div style="font-size: 10px; opacity: 0.7; letter-spacing: 2px;">VAQT PORTALI</div>
+        <div id="yearDisplay" style="font-size: 28px; font-weight: bold; text-shadow: 0 0 10px #ffd700;">2024</div>
         <input type="range" min="1400" max="2100" value="2024" oninput="moveTime(this.value)">
-        <p style="font-size: 10px; color: #fff;">EKRANGA BOSING VA SURING</p>
+        <div style="font-size: 10px; margin-top: 10px; color: #fff;">EKRANGA BOSING VA SURING</div>
+        <button class="bonus-btn" onclick="runAI()">🧠 AI MASLAHAT</button>
     </div>
 
     <script>
-        // 1. SUPABASE (Ma'lumotlar chiqishi uchun buni to'g'ri to'ldiring)
-        const SB_URL = "https://supabase.co";
+        // 1. SUPABASE SOZLAMALARI
+        const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
         const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const supabase = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-        // 2. XARITA (Samarqand Registon markaz qilib olindi)
+        // 2. XARITA (SAMARQAND REGISTON)
         var map = L.map('map', {zoomControl: false}).setView([39.654, 66.975], 13);
         
-        // OSM Xaritasi (Bu 100% ishlashi shart)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // OSM Xaritasi ulanishi
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        var markersGroup = L.layerGroup().addTo(map);
 
         // 3. AUDIO TIZIMI
         var audioCtx;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function playSound(freq, type) {
             if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             var osc = audioCtx.createOscillator();
             var g = audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
+            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
             osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
         }
 
-        // 4. VAQTNI SURISH
-        function moveTime(v) {
+        // 4. VAQTNI SURISH VA BAZADAN MA'LUMOT OLISH
+        async function moveTime(v) {
             document.getElementById('yearDisplay').innerText = v;
             var m = document.getElementById('map');
             
             if(v < 1850) {
-                playSound(35, 'square'); // Ot tuyoqlari
+                playSound(40, 'square'); // Ot tuyoqlari
                 m.className = "past";
             } else if(v > 2060) {
-                playSound(150 + (v-2060)*2, 'sawtooth'); // Uchar mashinalar
+                playSound(150 + (v-2060)*2, 'sawtooth'); // Kelajak g'uvullashi
                 m.className = "future";
             } else {
                 m.className = "";
             }
+
+            // Bazadan nuqtalarni yuklash
+            const { data, error } = await supabaseClient.from('places').select('*');
+            if (data) {
+                markersGroup.clearLayers();
+                data.filter(p => Math.abs(p.era - v) <= 100).forEach(p => {
+                    L.marker([p.lat, p.lng]).addTo(markersGroup)
+                     .bindPopup(`<b>${p.name}</b><br>${p.description}`);
+                });
+            }
         }
 
-        // 5. XARITANI MAJBURIY UYG'OTISH
+        function runAI() {
+            alert("TimeMap AI: Slayderni 1400-yilga suring, u yerda Amir Temur davrini topdim!");
+        }
+
+        // 5. XARITANI MAJBURIY UYG'OTISH (QORA EKRANGA QARSHI)
         window.onload = function() {
             setTimeout(function() { 
                 map.invalidateSize(); 
-            }, 600);
+                moveTime(2024);
+            }, 500);
         };
     </script>
 </body>
