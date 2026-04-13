@@ -3,154 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap PRO | Portal</title>
+    <title>TimeMap | Business & History Portal</title>
 
-    <!-- ✅ KUTUBXONALAR -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css""")/>>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
+    <script src="https://jsdelivr.net"></script>
 
     <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.9); }
-        body, html { margin:0; height:100%; background:#000; font-family:sans-serif; overflow: hidden; }
-        #map { height:100%; width:100%; transition: filter 0.8s ease; }
+        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
+        body, html { margin:0; height:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
+        #map { height:100%; width:100%; transition: 1s filter; z-index: 1; }
 
-        /* Modern UI */
-        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; }
-        
-        .top-ui { position:absolute; top:15px; left:50%; transform:translateX(-50%); width:90%; max-width:450px; padding:10px; display:flex; gap:10px; z-index:1000; }
-        .top-ui input { width:100%; padding:12px; border-radius:10px; border:none; background:rgba(255,255,255,0.1); color:white; outline:none; }
+        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; }
+        .ui { position: absolute; z-index: 1000; }
 
-        /* Vaqt Mashinasi Slayderi */
-        .time-box { position:absolute; right:20px; top:50%; transform:translateY(-50%); padding:25px 15px; display:flex; flex-direction:column; align-items:center; z-index:1000; }
-        .v-range { appearance: slider-vertical; width:12px; height:250px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+        /* Biznes Paneli */
+        .business-panel { top: 80px; left: 20px; width: 280px; padding: 15px; display: none; flex-direction: column; gap: 10px; }
+        .place-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }
+        .vip-tag { color: var(--gold); font-weight: bold; font-size: 10px; border: 1px solid var(--gold); padding: 2px 5px; border-radius: 5px; }
 
-        .card { position:absolute; bottom:100px; left:50%; transform:translateX(-50%); width:85%; max-width:400px; padding:20px; display:none; z-index:1001; }
-        
-        .dock { position:absolute; bottom:25px; left:50%; transform:translateX(-50%); display:flex; gap:15px; z-index:1000; }
-        .btn { width:60px; height:60px; border-radius:50%; border:none; cursor:pointer; font-size:24px; color:white; display:flex; align-items:center; justify-content:center; }
+        /* Vaqt Slayderi */
+        .time-box { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
+        .v-range { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+
+        .dock { bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
+        .btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .btn-gold { background: linear-gradient(45deg, #ffd700, #b8860b); color: black; }
         .btn-ai { background: linear-gradient(135deg, #00f3ff, #bc00ff); box-shadow: 0 0 20px var(--neon); }
 
-        /* Era Vizual Effektlari */
-        .past { filter: sepia(0.6) contrast(1.1) brightness(0.9) !important; }
-        .future { filter: hue-rotate(170deg) saturate(1.6) brightness(1.1) !important; }
-        
-        .tc-badge { position: absolute; top: 25px; right: 25px; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); }
+        /* Era Effektlari */
+        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9); }
+        .future { filter: hue-rotate(180deg) saturate(1.6) brightness(1.1); }
+        .coin-box { top: 20px; right: 20px; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); font-size: 18px; }
     </style>
 </head>
 <body onmousedown="initAudio()">
 
     <div id="map"></div>
 
-    <!-- UI -->
-    <div class="tc-badge glass">🪙 <span id="balance">500</span> TC</div>
+    <!-- Hamyon -->
+    <div class="ui coin-box glass">🪙 <span id="balance">750</span> TC</div>
 
-    <div class="top-ui glass">
-        <input placeholder="🔍 Vaqt va makon qidiruvi..." oninput="search(this.value)">
+    <!-- Top 5 Biznes Panel -->
+    <div id="bizPanel" class="ui business-panel glass">
+        <h4 style="margin:0; color:var(--neon)">🚀 Yaqindagi Top 5 Joy</h4>
+        <div id="bizList"></div>
+        <p style="font-size: 10px; opacity: 0.6;">*VIP joylar TimeCoin orqali chegirma beradi</p>
     </div>
 
+    <!-- Vaqt Mashinasi -->
     <div class="ui time-box glass">
-        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:24px; margin-bottom:15px;">2024</span>
+        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:26px; margin-bottom:15px;">2024</span>
         <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="travel(this.value)">
     </div>
 
-    <div id="card" class="glass card">
-        <div id="cardContent"></div>
-        <button onclick="document.getElementById('card').style.display='none'" style="width:100%; margin-top:15px; padding:12px; background:var(--gold); border:none; border-radius:10px; color:black; font-weight:bold; cursor:pointer;">YOPISH</button>
-    </div>
-
     <div class="dock">
-        <button class="btn glass" onclick="nearby()">📍</button>
-        <button class="btn btn-ai" onclick="alert('AI: Slayderni suring, men o‘tmishni tahlil qilaman!')">🧠</button>
-        <button class="btn glass" onclick="toggle3D()">🧭</button>
+        <button class="btn glass" onclick="findTop5()">🏢</button>
+        <button class="btn btn-ai" onclick="runAI()">🧠</button>
+        <button class="btn btn-gold" onclick="alert('Tez kunda: O\'z biznesingizni VIP qiling!')">💎</button>
+        <button class="btn glass" onclick="location.reload()">🔄</button>
     </div>
 
     <script>
-        // ✅ SUPABASE (Sizning ma'lumotlaringiz qo'yildi)
-        const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
+        const SB_URL = "https://supabase.co";
         const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
         const db = supabase.createClient(SB_URL, SB_KEY);
 
-        // ✅ MAP INIT (Samarqandga yo'naltirildi)
-        let map = L.map('map', { zoomControl: false }).setView([39.654, 66.975], 13);
+        var map = L.map('map', { zoomControl: false }).setView([39.654, 66.975], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let allPlaces = [];
         let markerLayer = L.layerGroup().addTo(map);
 
-        // ✅ AUDIO ENGINE (BONUS)
+        // --- 1. HAQIQIY AUDIO MOTOR (OTLAR VA DRONLAR) ---
         let audioCtx;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
 
-        function playSound(year) {
+        function playAdvancedSound(year) {
             if (!audioCtx) return;
             if (audioCtx.state === 'suspended') audioCtx.resume();
+            
             let osc = audioCtx.createOscillator();
-            let g = audioCtx.createGain();
-            osc.type = year > 2024 ? 'sawtooth' : 'sine';
-            osc.frequency.setValueAtTime(year / 4, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
-            osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+            let gain = audioCtx.createGain();
+
+            if (year < 1850) { 
+                // OT TUYOQLARI (Ritmik kvadrat to'lqin)
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(30, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
+            } else if (year > 2060) {
+                // UCHAR MASHINA (Dron g'uvullashi)
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.6);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+            } else {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
+            }
+
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.6);
         }
 
-        // ✅ TIME TRAVEL
+        // --- 2. TIME TRAVEL ---
         async function travel(y) {
             document.getElementById('yearDisplay').innerText = y;
-            let mapDiv = document.getElementById('map');
-            if(y < 1850) mapDiv.className = "past"; 
-            else if(y > 2060) mapDiv.className = "future"; 
-            else mapDiv.className = "";
+            let mDiv = document.getElementById('map');
+            mDiv.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
 
-            playSound(y);
-            renderFiltered(y);
+            playAdvancedSound(y);
+            renderMarkers(y);
         }
 
-        async function loadData(){
-            let { data, error } = await db.from('places').select('*');
+        async function loadData() {
+            let { data } = await db.from('places').select('*');
             if(data) { allPlaces = data; travel(2024); }
         }
 
-        function renderFiltered(year) {
+        function renderMarkers(year) {
             markerLayer.clearLayers();
             allPlaces.filter(p => Math.abs(p.era - year) <= 100).forEach(p => {
-                let m = L.marker([p.lat, p.lng]).addTo(markerLayer);
-                m.on('click', () => {
-                    document.getElementById('card').style.display = "block";
-                    document.getElementById('cardContent').innerHTML = `
-                        <h3 style="color:var(--gold);margin:0">${p.name}</h3>
-                        <p style="color:var(--neon);font-size:12px">${p.era}-yil</p>
-                        <img src="${p.image_url || 'https://picsum.photos'}" style="width:100%;border-radius:10px;margin:10px 0;">
-                        <p>${p.description || ''}</p>
+                let icon = p.is_vip ? L.icon({iconUrl: 'https://flaticon.com', iconSize:[30,30]}) : undefined;
+                L.marker([p.lat, p.lng], icon ? {icon} : {}).addTo(markerLayer)
+                 .bindPopup(`<b>${p.name}</b> ${p.is_vip ? '⭐' : ''}<br>${p.description}`);
+            });
+        }
+
+        // --- 3. BIZNES: TOP 5 YAQUIN JOY ---
+        function findTop5() {
+            navigator.geolocation.getCurrentPosition(pos => {
+                let uLat = pos.coords.latitude;
+                let uLng = pos.coords.longitude;
+                map.setView([uLat, uLng], 14);
+
+                let sorted = allPlaces
+                    .map(p => ({...p, dist: Math.hypot(p.lat - uLat, p.lng - uLng)}))
+                    .sort((a,b) => a.dist - b.dist)
+                    .slice(0, 5);
+
+                let panel = document.getElementById('bizPanel');
+                let list = document.getElementById('bizList');
+                panel.style.display = "flex";
+                list.innerHTML = "";
+
+                sorted.forEach(p => {
+                    list.innerHTML += `
+                        <div class="place-item">
+                            <span>${p.name}</span>
+                            ${p.is_vip ? '<span class="vip-tag">VIP</span>' : ''}
+                        </div>
                     `;
                 });
             });
         }
 
-        function search(q){
-            q=q.toLowerCase();
-            renderFiltered(document.getElementById('yearDisplay').innerText); // Qidiruv mantiqi
+        function runAI() {
+            alert("AI: 2100-yilga o'ting! Kelajakdagi uyingiz yonida yangi 'Cyber-Cafe' ochilganini ko'rasiz. Borib TimeCoin oling!");
         }
 
-        function nearby(){
-            navigator.geolocation.getCurrentPosition(pos=>{
-                map.setView([pos.coords.latitude, pos.coords.longitude], 14);
-            });
-        }
-
-        function toggle3D() {
-            let el = document.getElementById('map');
-            el.style.transform = el.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg)";
-        }
-
-        // ✅ START
-        window.onload = () => {
-            setTimeout(() => {
-                map.invalidateSize();
-                loadData();
-            }, 400);
-        };
+        window.onload = () => { setTimeout(() => { map.invalidateSize(); loadData(); }, 500); };
     </script>
 </body>
 </html>
-
