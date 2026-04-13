@@ -3,170 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap | Business & History Portal</title>
+    <title>TimeMap Samarqand | Smart City Portal</title>
 
+    <!-- ✅ KUTUBXONALAR (TO'LIQ MANZILLAR) -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
     <script src="https://jsdelivr.net"></script>
-
+    
     <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
-        body, html { margin:0; height:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
-        #map { height:100%; width:100%; transition: 1s filter; z-index: 1; }
+        :root { 
+            --gold: #ffd700; --neon: #00f3ff; --royal: #4f46e5;
+            --glass: rgba(10, 15, 30, 0.95); 
+        }
+        
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
+        
+        /* Xarita butun ekranni egallashi shart */
+        #map { 
+            position: absolute; top: 0; bottom: 0; left: 0; right: 0; 
+            z-index: 1; transition: 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #010409;
+        }
 
-        .glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; }
-        .ui { position: absolute; z-index: 1000; }
+        .ui { position: absolute; z-index: 1000; pointer-events: auto; }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
 
-        /* Biznes Paneli */
-        .business-panel { top: 80px; left: 20px; width: 280px; padding: 15px; display: none; flex-direction: column; gap: 10px; }
-        .place-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #333; font-size: 13px; }
-        .vip-tag { color: var(--gold); font-weight: bold; font-size: 10px; border: 1px solid var(--gold); padding: 2px 5px; border-radius: 5px; }
+        /* Sidebar Info */
+        .sidebar { top: 20px; left: 20px; width: 300px; bottom: 120px; padding: 20px; display: none; flex-direction: column; overflow-y: auto; }
+        
+        /* Challenge Panel */
+        .challenge-box { top: 20px; right: 20px; padding: 15px 25px; border: 2px solid var(--gold); }
 
-        /* Vaqt Slayderi */
-        .time-box { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
-        .v-range { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+        /* Time Slider */
+        .time-machine { right: 20px; top: 50%; transform: translateY(-50%); padding: 20px 10px; display: flex; flex-direction: column; align-items: center; }
+        .v-range { appearance: slider-vertical; width: 12px; height: 250px; background: var(--gold); border-radius: 10px; cursor: pointer; }
 
-        .dock { bottom: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
-        .btn { width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .btn-gold { background: linear-gradient(45deg, #ffd700, #b8860b); color: black; }
-        .btn-ai { background: linear-gradient(135deg, #00f3ff, #bc00ff); box-shadow: 0 0 20px var(--neon); }
+        /* Bottom Controls */
+        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
+        .btn { width: 65px; height: 65px; border-radius: 20px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.3s; color: white; }
+        .btn-ai { background: linear-gradient(135deg, var(--neon), var(--royal)); box-shadow: 0 0 20px var(--neon); }
+        .btn-gold { background: var(--gold); color: black; font-weight: bold; font-size: 14px; }
 
-        /* Era Effektlari */
-        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9); }
-        .future { filter: hue-rotate(180deg) saturate(1.6) brightness(1.1); }
-        .coin-box { top: 20px; right: 20px; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); font-size: 18px; }
+        /* Era Filters */
+        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9) !important; }
+        .future { filter: hue-rotate(170deg) saturate(1.6) brightness(1.1) !important; }
     </style>
 </head>
 <body onmousedown="initAudio()">
 
     <div id="map"></div>
 
-    <!-- Hamyon -->
-    <div class="ui coin-box glass">🪙 <span id="balance">750</span> TC</div>
+    <!-- Challenge Panel -->
+    <div class="ui challenge-box glass">
+        <div style="font-size:10px; color:var(--gold)">KUNLIK CHALLENGE</div>
+        <div id="currentChallenge">Registonni 1400-yilda ko'ring!</div>
+    </div>
 
-    <!-- Top 5 Biznes Panel -->
-    <div id="bizPanel" class="ui business-panel glass">
-        <h4 style="margin:0; color:var(--neon)">🚀 Yaqindagi Top 5 Joy</h4>
-        <div id="bizList"></div>
-        <p style="font-size: 10px; opacity: 0.6;">*VIP joylar TimeCoin orqali chegirma beradi</p>
+    <!-- Sidebar -->
+    <div id="sidebar" class="ui sidebar glass">
+        <div id="details"></div>
+        <button onclick="toggleSidebar()" style="margin-top:10px; width:100%; padding:10px; border-radius:10px; border:none; background:var(--gold);">YOPISH</button>
     </div>
 
     <!-- Vaqt Mashinasi -->
-    <div class="ui time-box glass">
-        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:26px; margin-bottom:15px;">2024</span>
+    <div class="ui time-machine glass">
+        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:22px; margin-bottom:15px;">2024</span>
         <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="travel(this.value)">
     </div>
 
-    <div class="dock">
-        <button class="btn glass" onclick="findTop5()">🏢</button>
+    <!-- Bottom Dock -->
+    <div class="ui dock">
+        <button class="btn glass" onclick="toggleSidebar()">ℹ️</button>
         <button class="btn btn-ai" onclick="runAI()">🧠</button>
-        <button class="btn btn-gold" onclick="alert('Tez kunda: O\'z biznesingizni VIP qiling!')">💎</button>
-        <button class="btn glass" onclick="location.reload()">🔄</button>
+        <button class="btn glass" onclick="toggle3D()">3D</button>
+        <button class="btn btn-gold" onclick="openAdmin()">ADMIN</button>
     </div>
 
     <script>
-        const SB_URL = "https://supabase.co";
+        // ✅ 1. SUPABASE CONNECTION
+        const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
         const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
         const db = supabase.createClient(SB_URL, SB_KEY);
 
-        var map = L.map('map', { zoomControl: false }).setView([39.654, 66.975], 13);
+        // ✅ 2. MAP SETUP
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([39.654, 66.975], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        let allPlaces = [];
-        let markerLayer = L.layerGroup().addTo(map);
-
-        // --- 1. HAQIQIY AUDIO MOTOR (OTLAR VA DRONLAR) ---
         let audioCtx;
-        function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); }
 
-        function playAdvancedSound(year) {
-            if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            
+        // ✅ 3. AUDIO ENGINE (OTLAR VA DRONLAR)
+        function playSfx(year) {
+            if(!audioCtx) return;
             let osc = audioCtx.createOscillator();
-            let gain = audioCtx.createGain();
-
-            if (year < 1850) { 
-                // OT TUYOQLARI (Ritmik kvadrat to'lqin)
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(30, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.1);
-            } else if (year > 2060) {
-                // UCHAR MASHINA (Dron g'uvullashi)
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.6);
-                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
-            } else {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.2);
-            }
-
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.6);
+            let g = audioCtx.createGain();
+            if(year < 1850) { osc.type = 'square'; osc.frequency.value = 30; } 
+            else if(year > 2060) { osc.type = 'sawtooth'; osc.frequency.value = 150; }
+            else { osc.type = 'sine'; osc.frequency.value = 400; }
+            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
         }
 
-        // --- 2. TIME TRAVEL ---
+        // ✅ 4. TIME TRAVEL
         async function travel(y) {
             document.getElementById('yearDisplay').innerText = y;
             let mDiv = document.getElementById('map');
             mDiv.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
-
-            playAdvancedSound(y);
-            renderMarkers(y);
+            playSfx(y);
+            loadData(y);
         }
 
-        async function loadData() {
-            let { data } = await db.from('places').select('*');
-            if(data) { allPlaces = data; travel(2024); }
+        async function loadData(year) {
+            const { data } = await db.from('places').select('*');
+            if(data) {
+                // Bu yerda markerlarni tozalash va qayta chizish kodi
+                // Hozircha Samarqand uchun fundament tayyor
+            }
         }
 
-        function renderMarkers(year) {
-            markerLayer.clearLayers();
-            allPlaces.filter(p => Math.abs(p.era - year) <= 100).forEach(p => {
-                let icon = p.is_vip ? L.icon({iconUrl: 'https://flaticon.com', iconSize:[30,30]}) : undefined;
-                L.marker([p.lat, p.lng], icon ? {icon} : {}).addTo(markerLayer)
-                 .bindPopup(`<b>${p.name}</b> ${p.is_vip ? '⭐' : ''}<br>${p.description}`);
-            });
+        // ✅ 5. TOOLS
+        function toggle3D() {
+            let m = document.getElementById('map');
+            m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg) scale(1.1)";
         }
 
-        // --- 3. BIZNES: TOP 5 YAQUIN JOY ---
-        function findTop5() {
-            navigator.geolocation.getCurrentPosition(pos => {
-                let uLat = pos.coords.latitude;
-                let uLng = pos.coords.longitude;
-                map.setView([uLat, uLng], 14);
+        function toggleSidebar() {
+            let s = document.getElementById('sidebar');
+            s.style.display = s.style.display === "none" ? "flex" : "none";
+        }
 
-                let sorted = allPlaces
-                    .map(p => ({...p, dist: Math.hypot(p.lat - uLat, p.lng - uLng)}))
-                    .sort((a,b) => a.dist - b.dist)
-                    .slice(0, 5);
-
-                let panel = document.getElementById('bizPanel');
-                let list = document.getElementById('bizList');
-                panel.style.display = "flex";
-                list.innerHTML = "";
-
-                sorted.forEach(p => {
-                    list.innerHTML += `
-                        <div class="place-item">
-                            <span>${p.name}</span>
-                            ${p.is_vip ? '<span class="vip-tag">VIP</span>' : ''}
-                        </div>
-                    `;
-                });
-            });
+        function openAdmin() {
+            let p = prompt("Admin paroli:");
+            if(p === "777") {
+                let ch = prompt("Yangi Challenge yozing:");
+                if(ch) document.getElementById('currentChallenge').innerText = ch;
+            }
         }
 
         function runAI() {
-            alert("AI: 2100-yilga o'ting! Kelajakdagi uyingiz yonida yangi 'Cyber-Cafe' ochilganini ko'rasiz. Borib TimeCoin oling!");
+            alert("TimeMap AI: Slayderni 1420-yilga suring, Mirzo Ulug'bek davrini tahlil qilamiz!");
         }
 
-        window.onload = () => { setTimeout(() => { map.invalidateSize(); loadData(); }, 500); };
+        window.onload = () => { setTimeout(() => { map.invalidateSize(); travel(2024); }, 500); };
     </script>
 </body>
 </html>
