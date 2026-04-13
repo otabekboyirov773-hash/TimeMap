@@ -1,17 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TimeMap Final</title>
     <meta charset="utf-8" />
+    <title>TimeMap Final Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Faqat eng ishonchli manbalar -->
+    <!-- Leaflet - Eng ishonchli havolalar -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
+    <!-- Supabase -->
+    <script src="https://jsdelivr.net"></script>
     <style>
-        body { margin: 0; padding: 0; background: black; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100%; }
-        .ui { position: absolute; z-index: 1000; background: rgba(0,0,0,0.8); color: gold; padding: 15px; border-radius: 10px; top: 20px; right: 20px; text-align: center; border: 1px solid gold; }
-        input { width: 200px; cursor: pointer; }
+        body { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; height: 100vh; background: #010409; }
+        .ui { position: absolute; z-index: 1000; top: 20px; right: 20px; background: rgba(0,0,0,0.85); color: #ffd700; padding: 20px; border-radius: 15px; border: 1px solid #ffd700; text-align: center; backdrop-filter: blur(10px); }
+        input[type=range] { width: 150px; appearance: slider-vertical; height: 200px; margin-top: 10px; cursor: pointer; background: #ffd700; }
+        .past { filter: sepia(0.8) contrast(1.1); }
+        .future { filter: hue-rotate(180deg) brightness(1.2); }
     </style>
 </head>
 <body onmousedown="initAudio()">
@@ -19,19 +23,24 @@
     <div id="map"></div>
 
     <div class="ui">
-        <div id="yearDisplay" style="font-size: 24px; font-weight: bold;">2024</div>
+        <div id="yearDisplay" style="font-size: 26px; font-weight: bold;">2024</div>
         <input type="range" min="1400" max="2100" value="2024" oninput="moveTime(this.value)">
-        <p style="font-size: 10px;">EKRANGA BOSING VA SURING</p>
+        <p style="font-size: 10px; color: #fff;">EKRANGA BOSING VA SURING</p>
     </div>
 
     <script>
-        // XARITANI ISHGA TUSHIRISH
-        var map = L.map('map', {zoomControl: false}).setView([39.65, 66.97], 13);
+        // 1. SUPABASE (Ma'lumotlar chiqishi uchun buni to'g'ri to'ldiring)
+        const SB_URL = "https://supabase.co";
+        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
+        const supabase = window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+        // 2. XARITA (Samarqand Registon markaz qilib olindi)
+        var map = L.map('map', {zoomControl: false}).setView([39.654, 66.975], 13);
         
-        // OSM xaritasi
+        // OSM Xaritasi (Bu 100% ishlashi shart)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // OVOZ TIZIMI
+        // 3. AUDIO TIZIMI
         var audioCtx;
         function initAudio() {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -39,37 +48,38 @@
 
         function playSound(freq, type) {
             if (!audioCtx) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             var osc = audioCtx.createOscillator();
             var g = audioCtx.createGain();
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.5);
+            g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.3);
             osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
         }
 
+        // 4. VAQTNI SURISH
         function moveTime(v) {
             document.getElementById('yearDisplay').innerText = v;
+            var m = document.getElementById('map');
             
-            // O'tmish (Otlar)
             if(v < 1850) {
-                playSound(40, 'square');
-                document.getElementById('map').style.filter = "sepia(0.8)";
-            } 
-            // Kelajak (Mashinalar)
-            else if(v > 2060) {
-                playSound(150 + (v-2060), 'sawtooth');
-                document.getElementById('map').style.filter = "hue-rotate(180deg) brightness(1.2)";
+                playSound(35, 'square'); // Ot tuyoqlari
+                m.className = "past";
+            } else if(v > 2060) {
+                playSound(150 + (v-2060)*2, 'sawtooth'); // Uchar mashinalar
+                m.className = "future";
             } else {
-                document.getElementById('map').style.filter = "none";
+                m.className = "";
             }
         }
 
-        // QORA EKRANNI DAVOLASH
+        // 5. XARITANI MAJBURIY UYG'OTISH
         window.onload = function() {
             setTimeout(function() { 
                 map.invalidateSize(); 
-            }, 500);
+            }, 600);
         };
     </script>
 </body>
