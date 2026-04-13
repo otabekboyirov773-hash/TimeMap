@@ -1,121 +1,52 @@
 <!DOCTYPE html>
-<html lang="uz">
+<html>
 <head>
     <meta charset="utf-8" />
-    <title>TimeMap Portal | Samarkand Edition</title>
+    <title>TimeMap PORTAL</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- 1. Leaflet (Xarita Dvigateli) - To'liq manzillar -->
+    <!-- Kutubxonalar -->
     <link rel="stylesheet" href="https://unpkg.com" />
     <script src="https://unpkg.com"></script>
-    
-    <!-- 2. Supabase SDK -->
     <script src="https://jsdelivr.net"></script>
-
     <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.9); }
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        
-        /* Xarita butun ekranni egallashi shart */
-        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; background: #010409; }
-        
-        .ui { position: absolute; z-index: 1000; top: 20px; right: 20px; background: var(--glass); color: var(--gold); padding: 20px; border-radius: 20px; border: 1px solid rgba(255,215,0,0.3); text-align: center; backdrop-filter: blur(15px); box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-        
-        input[type=range] { width: 15px; appearance: slider-vertical; height: 250px; margin-top: 15px; cursor: pointer; background: var(--gold); border-radius: 5px; }
-        
-        /* Era Visual Filters */
-        .past { filter: sepia(0.8) contrast(1.1) brightness(0.9) !important; }
-        .future { filter: hue-rotate(180deg) brightness(1.2) saturate(1.5) !important; }
-        
-        .btn-ai { background: linear-gradient(45deg, var(--gold), #b8860b); border: none; padding: 12px; border-radius: 12px; color: black; font-weight: bold; cursor: pointer; margin-top: 15px; width: 100%; font-size: 14px; transition: 0.3s; }
-        .btn-ai:hover { transform: scale(1.05); box-shadow: 0 0 15px var(--gold); }
-
-        .coin-box { position: absolute; top: 25px; left: 25px; z-index: 1000; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); border-radius: 15px; background: var(--glass); }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; height: 100%; width: 100%; background: #010409; }
+        .ui { position: absolute; z-index: 1000; top: 20px; right: 20px; background: rgba(0,0,0,0.8); color: gold; padding: 20px; border-radius: 15px; border: 1px solid gold; text-align: center; }
+        input[type=range] { width: 150px; appearance: slider-vertical; height: 200px; cursor: pointer; }
     </style>
 </head>
-<body onmousedown="initAudio()">
+<body onmousedown="if(!window.audioCtx) window.audioCtx = new AudioContext()">
 
     <div id="map"></div>
 
-    <div class="coin-box glass">🪙 <span id="tc">500</span> TC</div>
-
     <div class="ui">
-        <div style="font-size: 10px; opacity: 0.7; letter-spacing: 2px; margin-bottom: 5px;">TIME PORTAL</div>
-        <div id="yearDisplay" style="font-size: 32px; font-weight: bold; text-shadow: 0 0 10px var(--gold);">2024</div>
-        <input type="range" min="1400" max="2100" value="2024" oninput="moveTime(this.value)">
-        <div style="font-size: 9px; margin-top: 10px; color: #fff; opacity: 0.6;">EKRANGA BOSING VA SURING</div>
-        <button class="btn-ai" onclick="runAI()">🧠 AI GID</button>
+        <div id="yearText" style="font-size: 24px; font-weight: bold;">2024</div>
+        <input type="range" min="1400" max="2100" value="2024" oninput="shift(this.value)">
     </div>
 
     <script>
-        // 1. SUPABASE CONNECTION (Sizning ma'lumotlaringiz ✅)
-        const SB_URL = "https://supabase.co";
-        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-
-        // 2. MAP SETUP (Registon, Samarqand)
-        var map = L.map('map', {zoomControl: false, attributionControl: false}).setView([39.6548, 66.9757], 13);
+        // Xaritani majburan uyg'otish funksiyasi
+        var map = L.map('map', {zoomControl: false}).setView([39.65, 66.97], 12);
         
-        // OpenStreetMap Tile Layer
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        
-        var markersGroup = L.layerGroup().addTo(map);
 
-        // 3. AUDIO SYSTEM (OTLAR VA MASHINALAR)
-        var audioCtx;
-        function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+        function shift(v) {
+            document.getElementById('yearText').innerText = v;
+            // Ovoz va effektlar kodi...
+            if(v < 1800) document.getElementById('map').style.filter = "sepia(1)";
+            else if(v > 2060) document.getElementById('map').style.filter = "hue-rotate(180deg)";
+            else document.getElementById('map').style.filter = "none";
         }
 
-        function playSound(freq, type) {
-            if (!audioCtx) return;
-            var osc = audioCtx.createOscillator();
-            var g = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            g.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.4);
-            osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-        }
-
-        // 4. VAQTNI SURISH VA DATA FILTRLASH
-        async function moveTime(v) {
-            document.getElementById('yearDisplay').innerText = v;
-            var m = document.getElementById('map');
-            
-            if(v < 1850) {
-                playSound(40, 'square'); // Ot tuyoqlari (O'tmish)
-                m.className = "past";
-            } else if(v > 2060) {
-                playSound(150 + (v-2060)*2, 'sawtooth'); // Uchar kemalar (Kelajak)
-                m.className = "future";
-            } else {
-                m.className = "";
-            }
-
-            // Supabase'dan o'sha davrga mos nuqtalarni olish
-            const { data, error } = await supabaseClient.from('places').select('*');
-            if (data) {
-                markersGroup.clearLayers();
-                data.filter(p => Math.abs(p.era - v) <= 100).forEach(p => {
-                    L.marker([p.lat, p.lng]).addTo(markersGroup)
-                     .bindPopup(`<div style="color:black"><b>${p.name}</b><br>${p.description}</div>`);
-                });
-            }
-        }
-
-        function runAI() {
-            alert("TimeMap AI: Slayderni 1420-yilga suring. Men u yerda Mirzo Ulug'bek qurdirgan madrasani kashf etdim!");
-        }
-
-        // 5. XARITANI MAJBURIY UYG'OTISH (Qora ekranga qarshi)
+        // Qora ekranga qarshi 100% chora
         window.onload = function() {
-            setTimeout(function() { 
-                map.invalidateSize(); 
-                moveTime(2024);
-            }, 600);
+            function fixMap() {
+                map.invalidateSize();
+                console.log("Map resized");
+            }
+            fixMap();
+            setTimeout(fixMap, 500);
+            setInterval(fixMap, 2000);
         };
     </script>
 </body>
