@@ -1,82 +1,210 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
-    <meta charset="utf-8" />
-    <title>TimeMap PORTAL</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Leaflet Kutubxonalari (SHU YERDA XATO BOR EDI) -->
-    <link rel="stylesheet" href="https://unpkg.com" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
-    <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; }
-        /* Xaritani majburan ko'rsatish uchun */
-        #map { 
-            position: absolute; 
-            top: 0; 
-            bottom: 0; 
-            left: 0; 
-            right: 0; 
-            height: 100%; 
-            width: 100%; 
-            background: #010409; 
-            z-index: 1;
-        }
-        .ui { 
-            position: absolute; 
-            z-index: 1000; 
-            top: 20px; 
-            right: 20px; 
-            background: rgba(0,0,0,0.85); 
-            color: #ffd700; 
-            padding: 20px; 
-            border-radius: 15px; 
-            border: 1px solid #ffd700; 
-            text-align: center; 
-            backdrop-filter: blur(10px);
-        }
-        input[type=range] { width: 150px; appearance: slider-vertical; height: 200px; margin-top: 10px; cursor: pointer; }
-        .past { filter: sepia(0.8) contrast(1.1); }
-        .future { filter: hue-rotate(180deg) brightness(1.2); }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>TimeMap PRO</title>
+
+<!-- ✅ LEAFLET -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- ✅ SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body,html{
+margin:0;
+height:100%;
+background:#000;
+font-family:sans-serif;
+}
+
+#map{
+height:100%;
+width:100%;
+}
+
+/* UI */
+.search{
+position:absolute;
+top:10px;
+left:10px;
+right:10px;
+z-index:1000;
+}
+
+.search input{
+width:100%;
+padding:12px;
+border-radius:10px;
+border:none;
+background:rgba(0,0,0,0.7);
+color:white;
+}
+
+.card{
+position:absolute;
+bottom:0;
+left:0;
+right:0;
+background:#111;
+color:white;
+padding:15px;
+border-radius:20px 20px 0 0;
+display:none;
+z-index:1000;
+}
+
+.buttons{
+position:absolute;
+bottom:10px;
+left:10px;
+right:10px;
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:5px;
+z-index:1000;
+}
+
+button{
+padding:10px;
+border:none;
+border-radius:10px;
+background:#22c55e;
+color:white;
+}
+</style>
 </head>
-<body onmousedown="if(!window.audioCtx) window.audioCtx = new (window.AudioContext || window.webkitAudioContext)();">
 
-    <div id="map"></div>
+<body>
 
-    <div class="ui">
-        <div id="yearDisplay" style="font-size: 26px; font-weight: bold;">2024</div>
-        <input type="range" min="1400" max="2100" value="2024" oninput="moveTime(this.value)">
-        <p style="font-size: 10px; color: #fff;">EKRANGA BOSING VA SURING</p>
-    </div>
+<div id="map"></div>
 
-    <script>
-        // XARITANI SAMARQAND REGISTONGA YO'NALTIRISH
-        var map = L.map('map', {zoomControl: false}).setView([39.654, 66.975], 13);
-        
-        // OpenStreetMap qatlami
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(map);
+<div class="search">
+<input placeholder="Qidiruv..." oninput="search(this.value)">
+</div>
 
-        function moveTime(v) {
-            document.getElementById('yearDisplay').innerText = v;
-            var m = document.getElementById('map');
-            
-            // Effektlar
-            if(v < 1850) m.className = "past";
-            else if(v > 2060) m.className = "future";
-            else m.className = "";
-        }
+<div class="card" id="card"></div>
 
-        // QORA EKRANNI DAVOLASH (MAJBURIY UYG'OTISH)
-        window.onload = function() {
-            setTimeout(function() { 
-                map.invalidateSize(); 
-                console.log("Xarita yangilandi!");
-            }, 500);
-        };
-    </script>
+<div class="buttons">
+<button onclick="nearby()">📍</button>
+<button onclick="ai()">🧠</button>
+<button onclick="reload()">🔄</button>
+</div>
+
+<script>
+
+// ✅ SUPABASE (TO‘LDIR!)
+const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
+const SB_KEY = "BU YERGA ANON KEY";
+
+const db = supabase.createClient(SB_URL, SB_KEY);
+
+// ✅ MAP
+let map = L.map('map').setView([41.31,69.24],6);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
+
+// ✅ DATA
+let allPlaces = [];
+let markers = [];
+
+// ✅ LOAD
+async function loadData(){
+try{
+let { data, error } = await db.from('places').select('*');
+
+if(error){
+console.log(error);
+return;
+}
+
+allPlaces = data || [];
+render(allPlaces);
+
+}catch(e){
+console.log(e);
+}
+}
+
+// ✅ RENDER
+function render(arr){
+
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
+
+arr.slice(0,100).forEach(p=>{
+
+if(!p.lat || !p.lng) return;
+
+let m = L.marker([p.lat,p.lng]).addTo(map);
+
+m.on('click',()=>{
+showCard(p);
+});
+
+markers.push(m);
+
+});
+
+}
+
+// ✅ CARD
+function showCard(p){
+
+let c = document.getElementById("card");
+c.style.display="block";
+
+c.innerHTML = `
+<h3>${p.name}</h3>
+<img src="${p.image_url || 'https://picsum.photos/400'}"
+style="width:100%;border-radius:10px"
+onerror="this.src='https://picsum.photos/400/300'">
+<p>${p.description || ''}</p>
+`;
+
+}
+
+// ✅ SEARCH
+function search(q){
+q=q.toLowerCase();
+render(allPlaces.filter(p=>p.name?.toLowerCase().includes(q)));
+}
+
+// ✅ NEARBY
+function nearby(){
+navigator.geolocation.getCurrentPosition(pos=>{
+let sorted=[...allPlaces].sort((a,b)=>
+Math.hypot(a.lat-pos.coords.latitude,a.lng-pos.coords.longitude)-
+Math.hypot(b.lat-pos.coords.latitude,b.lng-pos.coords.longitude)
+);
+render(sorted.slice(0,5));
+});
+}
+
+// ✅ AI
+function ai(){
+render([...allPlaces].sort(()=>0.5-Math.random()).slice(0,5));
+}
+
+// ✅ RELOAD
+function reload(){
+loadData();
+}
+
+// ✅ START
+window.onload = ()=>{
+setTimeout(()=>{
+map.invalidateSize();
+loadData();
+},300);
+};
+
+</script>
+
 </body>
 </html>
