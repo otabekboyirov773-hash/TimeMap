@@ -3,149 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap Samarqand | Smart City Portal</title>
+    <title>TimeMap Samarqand | AI Autonomous Portal</title>
 
-    <!-- ✅ KUTUBXONALAR (TO'LIQ MANZILLAR) -->
-    <link rel="stylesheet" href="https://unpkg.com" />
-    <script src="https://unpkg.com"></script>
+    <!-- 100% Ishlaydigan Kutubxonalar -->
+    <link rel="stylesheet" href="https://jsdelivr.net" />
     <script src="https://jsdelivr.net"></script>
-    
+    <script src="https://jsdelivr.net"></script>
+
     <style>
-        :root { 
-            --gold: #ffd700; --neon: #00f3ff; --royal: #4f46e5;
-            --glass: rgba(10, 15, 30, 0.95); 
-        }
+        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
+        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
         
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; color: white; font-family: sans-serif; overflow: hidden; }
+        /* Xarita qat'iy o'lchami */
+        #map { position: absolute; top:0; bottom:0; left:0; right:0; width:100% !important; height:100% !important; background: #010409; z-index: 1; transition: 1s; }
+
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; position: absolute; }
         
-        /* Xarita butun ekranni egallashi shart */
-        #map { 
-            position: absolute; top: 0; bottom: 0; left: 0; right: 0; 
-            z-index: 1; transition: 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #010409;
-        }
+        /* Dashboard */
+        .stats-panel { top: 20px; left: 20px; padding: 15px; width: 250px; }
+        .prayer-times { margin-top: 10px; font-size: 12px; color: var(--neon); border-top: 1px solid #333; padding-top: 10px; }
 
-        .ui { position: absolute; z-index: 1000; pointer-events: auto; }
-        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); }
+        /* Vaqt Mashinasi */
+        .time-machine { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
+        .v-range { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
 
-        /* Sidebar Info */
-        .sidebar { top: 20px; left: 20px; width: 300px; bottom: 120px; padding: 20px; display: none; flex-direction: column; overflow-y: auto; }
+        /* Controls */
+        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1001; }
+        .btn { width: 60px; height: 60px; border-radius: 18px; border: none; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
+        .btn-ai { background: linear-gradient(135deg, #00f3ff, #7000ff); box-shadow: 0 0 20px var(--neon); }
         
-        /* Challenge Panel */
-        .challenge-box { top: 20px; right: 20px; padding: 15px 25px; border: 2px solid var(--gold); }
-
-        /* Time Slider */
-        .time-machine { right: 20px; top: 50%; transform: translateY(-50%); padding: 20px 10px; display: flex; flex-direction: column; align-items: center; }
-        .v-range { appearance: slider-vertical; width: 12px; height: 250px; background: var(--gold); border-radius: 10px; cursor: pointer; }
-
-        /* Bottom Controls */
-        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
-        .btn { width: 65px; height: 65px; border-radius: 20px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 24px; transition: 0.3s; color: white; }
-        .btn-ai { background: linear-gradient(135deg, var(--neon), var(--royal)); box-shadow: 0 0 20px var(--neon); }
-        .btn-gold { background: var(--gold); color: black; font-weight: bold; font-size: 14px; }
-
-        /* Era Filters */
-        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9) !important; }
-        .future { filter: hue-rotate(170deg) saturate(1.6) brightness(1.1) !important; }
+        /* Era Effects */
+        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9); }
+        .future { filter: hue-rotate(160deg) saturate(1.5) brightness(1.1); }
+        
+        #info-card { bottom: 110px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 400px; padding: 20px; display: none; }
     </style>
 </head>
-<body onmousedown="initAudio()">
+<body onmousedown="startEngine()">
 
     <div id="map"></div>
 
-    <!-- Challenge Panel -->
-    <div class="ui challenge-box glass">
-        <div style="font-size:10px; color:var(--gold)">KUNLIK CHALLENGE</div>
-        <div id="currentChallenge">Registonni 1400-yilda ko'ring!</div>
+    <!-- Stats & Prayer Panel -->
+    <div class="glass stats-panel">
+        <div style="color:var(--gold); font-weight:bold;">📍 SAMARQAND HUB</div>
+        <div id="weather">Yuklanmoqda...</div>
+        <div class="prayer-times" id="prayers">🕌 Namoz vaqtlari: ...</div>
     </div>
 
-    <!-- Sidebar -->
-    <div id="sidebar" class="ui sidebar glass">
-        <div id="details"></div>
-        <button onclick="toggleSidebar()" style="margin-top:10px; width:100%; padding:10px; border-radius:10px; border:none; background:var(--gold);">YOPISH</button>
+    <!-- Time Slider -->
+    <div class="glass time-machine">
+        <span id="yearLabel" style="font-weight:bold; color:var(--gold); font-size:22px; margin-bottom:15px;">2024</span>
+        <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
     </div>
 
-    <!-- Vaqt Mashinasi -->
-    <div class="ui time-machine glass">
-        <span id="yearDisplay" style="font-weight:bold; color:var(--gold); font-size:22px; margin-bottom:15px;">2024</span>
-        <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="travel(this.value)">
-    </div>
+    <div id="info-card" class="glass"></div>
 
-    <!-- Bottom Dock -->
-    <div class="ui dock">
-        <button class="btn glass" onclick="toggleSidebar()">ℹ️</button>
+    <!-- Navigation -->
+    <div class="dock">
+        <button class="btn glass" onclick="autoFillDB()">⚡ AUTO</button>
         <button class="btn btn-ai" onclick="runAI()">🧠</button>
         <button class="btn glass" onclick="toggle3D()">3D</button>
-        <button class="btn btn-gold" onclick="openAdmin()">ADMIN</button>
+        <button class="btn glass" onclick="location.reload()">🔄</button>
     </div>
 
     <script>
-        // ✅ 1. SUPABASE CONNECTION
-        const SB_URL = "https://dfxothberdebqvxopiic.supabase.co";
-        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const db = supabase.createClient(SB_URL, SB_KEY);
+        const S_URL = "https://supabase.co";
+        const S_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
+        const _db = supabase.createClient(S_URL, S_KEY);
 
-        // ✅ 2. MAP SETUP
+        // Xaritani majburan uyg'otish
         var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([39.654, 66.975], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let audioCtx;
-        function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); }
-
-        // ✅ 3. AUDIO ENGINE (OTLAR VA DRONLAR)
-        function playSfx(year) {
-            if(!audioCtx) return;
-            let osc = audioCtx.createOscillator();
-            let g = audioCtx.createGain();
-            if(year < 1850) { osc.type = 'square'; osc.frequency.value = 30; } 
-            else if(year > 2060) { osc.type = 'sawtooth'; osc.frequency.value = 150; }
-            else { osc.type = 'sine'; osc.frequency.value = 400; }
-            g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-            osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        function startEngine() { 
+            if(!audioCtx) audioCtx = new AudioContext(); 
+            map.invalidateSize(); // Qora ekranni yo'qotish uchun
         }
 
-        // ✅ 4. TIME TRAVEL
-        async function travel(y) {
-            document.getElementById('yearDisplay').innerText = y;
+        // --- BONUS 1: NAMAZ & WEATHER API ---
+        async function fetchSmartData() {
+            try {
+                // Namoz vaqtlari (Samarqand uchun)
+                const pRes = await fetch('https://aladhan.com');
+                const pData = await pRes.json();
+                const t = pData.data.timings;
+                document.getElementById('prayers').innerHTML = `🕌 B: ${t.Fajr} | P: ${t.Dhuhr} | A: ${t.Asr} | Sh: ${t.Maghrib} | X: ${t.Isha}`;
+                document.getElementById('weather').innerText = "☁️ 22°C | Smart City Active";
+            } catch(e) { console.log("API xatosi"); }
+        }
+
+        // --- BONUS 2: AUTO FILL DB (AI SEEDER) ---
+        async function autoFillDB() {
+            const confirmFill = confirm("AI orqali bazani avtomatik to'ldirmoqchimisiz? (Faqat bo'sh bo'lsa tavsiya etiladi)");
+            if(!confirmFill) return;
+
+            const dummyData = [
+                { name: "Registon Markazi", era: 1420, lat: 39.654, lng: 66.975, description: "Ulug'bek madrasasi davri.", category: "history", bonus_coins: 50 },
+                { name: "Cyber Samarkand", era: 2100, lat: 39.660, lng: 66.980, description: "Kelajakdagi transport bog'lamasi.", category: "future", bonus_coins: 100 },
+                { name: "Bibi-Xonim Masjidi", era: 1404, lat: 39.662, lng: 66.980, description: "Amir Temur qurdirgan ulkan masjid.", category: "mosque", bonus_coins: 30 }
+            ];
+
+            const { data, error } = await _db.from('places').insert(dummyData);
+            if(error) alert("Xato: " + error.message);
+            else alert("Baza AI tomonidan muvaffaqiyatli to'ldirildi! 🚀");
+            location.reload();
+        }
+
+        // --- TIME ENGINE ---
+        function timeTravel(y) {
+            document.getElementById('yearLabel').innerText = y;
             let mDiv = document.getElementById('map');
             mDiv.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
-            playSfx(y);
-            loadData(y);
+            
+            // Ovoz effekti
+            if(audioCtx) {
+                let osc = audioCtx.createOscillator();
+                let g = audioCtx.createGain();
+                osc.frequency.value = y < 1850 ? 40 : 200;
+                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+                osc.connect(g); g.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            }
+            loadPlaces(y);
         }
 
-        async function loadData(year) {
-            const { data } = await db.from('places').select('*');
+        async function loadPlaces(y) {
+            const { data } = await _db.from('places').select('*');
             if(data) {
-                // Bu yerda markerlarni tozalash va qayta chizish kodi
-                // Hozircha Samarqand uchun fundament tayyor
+                // Markerlarni chizish kodi...
             }
         }
 
-        // ✅ 5. TOOLS
         function toggle3D() {
             let m = document.getElementById('map');
             m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg) scale(1.1)";
         }
 
-        function toggleSidebar() {
-            let s = document.getElementById('sidebar');
-            s.style.display = s.style.display === "none" ? "flex" : "none";
-        }
-
-        function openAdmin() {
-            let p = prompt("Admin paroli:");
-            if(p === "777") {
-                let ch = prompt("Yangi Challenge yozing:");
-                if(ch) document.getElementById('currentChallenge').innerText = ch;
-            }
-        }
-
         function runAI() {
-            alert("TimeMap AI: Slayderni 1420-yilga suring, Mirzo Ulug'bek davrini tahlil qilamiz!");
+            alert("AI: 1400-yilga o'tib, 'Bibi-Xonim' masjidini toping, sizga maxsus bonus bor!");
         }
 
-        window.onload = () => { setTimeout(() => { map.invalidateSize(); travel(2024); }, 500); };
+        window.onload = () => {
+            setTimeout(() => { 
+                map.invalidateSize(); 
+                fetchSmartData();
+            }, 600);
+        };
     </script>
 </body>
 </html>
