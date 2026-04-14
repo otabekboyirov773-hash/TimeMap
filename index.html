@@ -1,217 +1,170 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap Samarqand PRO</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TimeMap Global OS</title>
 
-<!-- ✅ LEAFLET (MUHIM) -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://jsdelivr.net" />
+    <script src="https://jsdelivr.net"></script>
+    <script src="https://jsdelivr.net"></script>
 
-<!-- ✅ SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <style>
+        :root { --gold: #FFD700; --neon: #00F3FF; --glass: rgba(10, 15, 30, 0.95); }
+        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow:hidden; color:white; }
+        
+        #map { position:absolute; top:0; bottom:0; width:100%; height:100%; z-index: 1; transition: 0.8s filter; }
 
-<style>
-:root {
-  --gold:#ffd700;
-  --neon:#00f3ff;
-}
+        /* Portal Chaqnashi (Wow effect) */
+        #portalFlash { position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:9999; pointer-events:none; transition:0.3s; }
 
-body,html {
-  margin:0;
-  height:100%;
-  background:#000;
-  font-family:sans-serif;
-  overflow:hidden;
-}
+        .ui { position:absolute; z-index:1000; pointer-events:auto; }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.8); }
 
-/* Xarita */
-#map {
-  width:100%;
-  height:100%;
-}
+        /* Dashboard */
+        .top-hub { top:15px; left:15px; right:15px; padding:15px 25px; display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--gold); }
+        
+        /* Vaqt Mashinasi Slayderi (Hayajonli) */
+        .time-box { right:15px; top:50%; transform:translateY(-50%); padding:25px 15px; display:flex; flex-direction:column; align-items:center; }
+        .v-slider { appearance:slider-vertical; width:15px; height:300px; background:var(--gold); border-radius:10px; cursor:pointer; }
+        #yearLabel { font-size:32px; font-weight:bold; color:var(--gold); text-shadow:0 0 15px var(--gold); }
 
-/* Panel */
-.panel {
-  position:absolute;
-  top:20px;
-  left:20px;
-  background:rgba(0,0,0,0.7);
-  padding:15px;
-  border-radius:15px;
-  color:white;
-  z-index:1000;
-}
+        /* Bottom Sheet (Pro UI) */
+        .sheet { position:fixed; bottom:0; left:0; right:0; background:var(--glass); border-radius:30px 30px 0 0; padding:25px; transform:translateY(100%); transition:0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index:2000; border-top:2px solid var(--neon); }
+        .sheet.active { transform:translateY(0); }
 
-/* Tugmalar */
-.controls {
-  position:absolute;
-  bottom:30px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  gap:10px;
-  z-index:1000;
-}
+        /* AI Ovozli Gid */
+        .ai-voice-box { top:100px; left:15px; padding:10px 15px; font-size:12px; border-left:3px solid var(--neon); display:none; max-width:200px; }
 
-.btn {
-  padding:10px 15px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  background:linear-gradient(135deg,#00f3ff,#7000ff);
-  color:white;
-}
-
-/* Time slider */
-.time-box {
-  position:absolute;
-  right:20px;
-  top:50%;
-  transform:translateY(-50%);
-  z-index:1000;
-  color:white;
-}
-
-</style>
+        .btn-ai { bottom:30px; left:50%; transform:translateX(-50%); width:80px; height:80px; background:linear-gradient(135deg, var(--neon), #7000FF); border-radius:50%; border:none; box-shadow:0 0 30px var(--neon); display:flex; align-items:center; justify-content:center; font-size:32px; z-index:1001; }
+        
+        /* Era Filters */
+        .past { filter: sepia(0.7) contrast(1.1) brightness(0.8) !important; }
+        .future { filter: hue-rotate(170deg) saturate(1.8) brightness(1.2) !important; }
+    </style>
 </head>
+<body onmousedown="startPortal()">
 
-<body>
+    <div id="portalFlash"></div>
+    <div id="map"></div>
 
-<div id="map"></div>
+    <!-- AI Ovoz Simulyatsiyasi -->
+    <div id="aiVoice" class="ui glass ai-voice-box">
+        <div style="color:var(--neon); font-weight:bold; font-size:10px;">AI GID OVOZI</div>
+        <div id="aiText">Vaqt portaliga xush kelibsiz...</div>
+    </div>
 
-<div class="panel">
-  <b style="color:var(--gold)">📍 Samarqand</b>
-  <div id="weather">⏳ yuklanmoqda...</div>
-  <div id="prayer">🕌 ...</div>
-</div>
+    <!-- Top Dashboard -->
+    <div class="ui top-hub glass">
+        <div style="font-weight:bold; font-size:20px; letter-spacing:1px;">TIMEMAP <span style="color:var(--neon)">OS</span></div>
+        <div style="color:var(--gold); font-weight:bold;">🪙 <span id="coins">1,500</span> TC</div>
+    </div>
 
-<div class="time-box">
-  <div id="year">2024</div>
-  <input type="range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
-</div>
+    <!-- Time Slider -->
+    <div class="ui time-box glass">
+        <div id="yearLabel">2024</div>
+        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeShift(this.value)">
+        <p style="font-size:10px; margin-top:10px; opacity:0.6;">PORTAL</p>
+    </div>
 
-<div class="controls">
-  <button class="btn" onclick="autoFill()">⚡ AI</button>
-  <button class="btn" onclick="toggle3D()">3D</button>
-  <button class="btn" onclick="location.reload()">🔄</button>
-</div>
+    <!-- Info Sheet -->
+    <div id="infoSheet" class="sheet">
+        <div style="width:50px; height:5px; background:rgba(255,255,255,0.2); border-radius:5px; margin: 0 auto 15px;"></div>
+        <div id="sheetContent"></div>
+        <button onclick="closeSheet()" style="width:100%; padding:18px; margin-top:20px; border-radius:15px; border:none; background:var(--gold); color:black; font-weight:bold; font-size:16px;">SAYOHATNI DAVOM ETTIRISH</button>
+    </div>
 
-<script>
+    <!-- Main Button -->
+    <button class="ui btn-ai" onclick="runAI()">🧠</button>
 
-/* =========================
-   🔥 SUPABASE ULASH
-========================= */
-const SUPABASE_URL = "https://dfxothberdebqvxopiic.supabase.co";
-const SUPABASE_KEY = "SENING_ANON_KEYING"; // shu yerga qo‘y
+    <script>
+        const SB_URL = "https://supabase.co";
+        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
+        const _db = supabase.createClient(SB_URL, SB_KEY);
 
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        var map = L.map('map', { zoomControl:false, attributionControl:false, tap:true }).setView([39.65, 66.97], 13);
+        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
+        var markerGroup = L.layerGroup().addTo(map);
 
-/* =========================
-   🗺️ XARITA
-========================= */
-const map = L.map('map').setView([39.654, 66.975], 13);
+        let audioCtx;
+        let allData = [];
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom:19
-}).addTo(map);
+        function startPortal() {
+            if(!audioCtx) audioCtx = new AudioContext();
+            map.invalidateSize();
+        }
 
-/* =========================
-   📍 MARKER FUNKSIYA
-========================= */
-let markers = [];
+        // --- ⚡ VAQT MASHINASI (SOUND + FLASH) ---
+        function timeShift(y) {
+            document.getElementById('yearLabel').innerText = y;
+            let m = document.getElementById('map');
+            
+            // Flash Effect
+            const flash = document.getElementById('portalFlash');
+            flash.style.opacity = "0.3";
+            setTimeout(() => flash.style.opacity = "0", 300);
 
-function clearMarkers() {
-  markers.forEach(m => map.removeLayer(m));
-  markers = [];
-}
+            // Era Visuals
+            m.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
 
-function addMarker(loc) {
-  let marker = L.marker([loc.lat, loc.lng])
-    .addTo(map)
-    .bindPopup(`<b>${loc.name}</b><br>${loc.description || ""}`);
+            // Audio (Otlar / Mashinalar)
+            if(audioCtx) {
+                let osc = audioCtx.createOscillator();
+                let g = audioCtx.createGain();
+                osc.frequency.value = y < 1850 ? 35 : (y > 2060 ? 160 : 440);
+                osc.type = y > 2060 ? 'sawtooth' : 'sine';
+                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+                osc.connect(g); g.connect(audioCtx.destination);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            }
+            renderPoints(y);
+        }
 
-  markers.push(marker);
-}
+        async function loadProData() {
+            const { data } = await _db.from('places').select('*');
+            if(data) { allData = data; timeShift(2024); }
+        }
 
-/* =========================
-   📡 DB DAN O‘QISH
-========================= */
-async function loadPlaces(year=2024) {
-  clearMarkers();
+        function renderPoints(year) {
+            markerGroup.clearLayers();
+            allData.filter(p => Math.abs(p.era - year) <= 120).forEach(p => {
+                let m = L.circleMarker([p.lat, p.lng], {
+                    radius: 12, color: p.is_vip ? '#FFD700' : '#00F3FF', fillOpacity: 0.9
+                }).addTo(markerGroup);
+                m.on('click', () => showInfo(p));
+            });
+        }
 
-  const { data, error } = await db.from('places').select('*');
+        function showInfo(p) {
+            const sheet = document.getElementById('infoSheet');
+            const content = document.getElementById('sheetContent');
+            const aiBox = document.getElementById('aiVoice');
+            const lang = 'uz';
 
-  if(error) {
-    console.log(error);
-    return;
-  }
+            content.innerHTML = `
+                <div style="font-size:12px; color:var(--neon); text-transform:uppercase;">${p.country} | ${p.city}</div>
+                <h2 style="color:var(--gold); margin:5px 0;">${p.name[lang]}</h2>
+                <img src="${p.image_url}" style="width:100%; border-radius:20px; margin:15px 0;" onerror="this.src='https://picsum.photos'">
+                <p style="font-size:15px; color:#ddd; line-height:1.6;">${p.description[lang]}</p>
+                <div style="background:rgba(0,243,255,0.1); padding:15px; border-radius:15px; border-left:5px solid var(--neon);">
+                    <b style="color:var(--neon)">🧠 AI SIRI:</b> ${p.ai_fact}
+                </div>
+            `;
+            
+            // AI Ovozli yordamchi simulyatsiyasi
+            aiBox.style.display = "block";
+            document.getElementById('aiText').innerText = "Bu joy haqida ma'lumot yuklandi...";
+            
+            sheet.classList.add('active');
+        }
 
-  data.forEach(loc => {
-    if(!loc.era || loc.era <= year){
-      addMarker(loc);
-    }
-  });
-}
+        function closeSheet() { document.getElementById('infoSheet').classList.remove('active'); }
 
-loadPlaces();
+        function runAI() {
+            alert("AI GLOBAL: Siz hozir " + allData.length + " ta portal orasida turibsiz. Eng yaqin tarixiy nuqta Rimda, kelajak Toshkentda!");
+        }
 
-/* =========================
-   ⏳ TIME TRAVEL
-========================= */
-function timeTravel(y) {
-  document.getElementById("year").innerText = y;
-
-  if(y < 1800) document.getElementById("map").style.filter = "sepia(0.7)";
-  else if(y > 2050) document.getElementById("map").style.filter = "hue-rotate(150deg)";
-  else document.getElementById("map").style.filter = "none";
-
-  loadPlaces(y);
-}
-
-/* =========================
-   🤖 AI AUTO DATA
-========================= */
-async function autoFill() {
-  const data = [
-    { name:"Registon", lat:39.654, lng:66.975, era:1420, description:"Ulug‘bek davri" },
-    { name:"Bibi Xonim", lat:39.662, lng:66.98, era:1404, description:"Amir Temur" },
-    { name:"Future City", lat:39.66, lng:66.99, era:2100, description:"Kelajak shahri" }
-  ];
-
-  const { error } = await db.from('places').insert(data);
-
-  if(error) alert("Xato: "+error.message);
-  else {
-    alert("AI joy qo‘shdi 🚀");
-    loadPlaces();
-  }
-}
-
-/* =========================
-   🌐 WEATHER (fake demo)
-========================= */
-function loadWeather() {
-  document.getElementById("weather").innerText = "☁️ 22°C";
-  document.getElementById("prayer").innerText = "🕌 Bomdod 05:00 | Peshin 12:30";
-}
-loadWeather();
-
-/* =========================
-   🎮 3D EFFECT
-========================= */
-function toggle3D() {
-  let m = document.getElementById("map");
-  m.style.transform = m.style.transform ? "" : "perspective(1000px) rotateX(40deg)";
-}
-
-/* =========================
-   🧠 QORA EKRAN FIX
-========================= */
-setTimeout(()=>{ map.invalidateSize(); },500);
-
-</script>
-
+        window.onload = () => { setTimeout(() => { map.invalidateSize(); loadProData(); }, 600); };
+    </script>
 </body>
 </html>
