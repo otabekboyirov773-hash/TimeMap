@@ -1,278 +1,285 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TimeMap ULTRA | Professional Edition</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMap ULTRA</title>
 
-    <!-- LEAFLET & SUPABASE -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css""")/>>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://googleapis.com" rel="stylesheet">
+<!-- ✅ TO‘G‘RI CDN -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-    <style>
-        :root { 
-            --gold: #FFD700; 
-            --neon: #00F3FF; 
-            --purple: #BC00FF;
-            --glass: rgba(10, 10, 15, 0.85); 
-        }
-        
-        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Space Grotesk', sans-serif; overflow:hidden; color:white; }
-        
-        /* 🌌 XARITA */
-        #map { position:absolute; top:0; bottom:0; width:100%; height:100%; z-index:1; transition: 0.8s filter; }
+<style>
+:root{
+--gold:#FFD700;
+--neon:#00F3FF;
+--purple:#BC00FF;
+--glass:rgba(10,10,15,0.85);
+}
 
-        /* 🎇 INTRO (SINGULARITY) */
-        #splash { 
-            position:fixed; width:100%; height:100%; background:#000; 
-            display:flex; align-items:center; justify-content:center; z-index:9999; cursor: pointer;
-        }
-        #dot { 
-            width:8px; height:8px; background:#fff; border-radius:50%; 
-            box-shadow:0 0 40px 10px #fff; transition:1.8s cubic-bezier(0.9, 0, 0.1, 1); 
-        }
-        .explode #dot { transform:scale(1200); opacity:0; }
+body,html{
+margin:0;height:100%;background:#000;color:white;
+font-family:sans-serif;overflow:hidden;
+}
 
-        /* 💎 GLASS UI ELEMENTS */
-        .ui { position: absolute; z-index: 1000; pointer-events: auto; }
-        .glass { 
-            background: var(--glass); backdrop-filter: blur(20px); 
-            border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.9); 
-        }
+#map{
+position:absolute;width:100%;height:100%;
+transition:0.8s;
+}
 
-        /* TOP STATUS BAR */
-        .top-hub { 
-            top: 20px; left: 20px; right: 20px; padding: 15px 25px; 
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .logo { font-weight: 700; letter-spacing: 3px; font-size: 18px; text-transform: uppercase; }
-        .logo span { color: var(--neon); text-shadow: 0 0 15px var(--neon); }
+/* INTRO */
+#splash{
+position:fixed;width:100%;height:100%;
+background:black;display:flex;align-items:center;justify-content:center;
+z-index:9999;cursor:pointer;
+}
+#dot{
+width:8px;height:8px;background:#fff;border-radius:50%;
+box-shadow:0 0 40px #fff;transition:1.5s;
+}
+.explode #dot{transform:scale(1200);opacity:0}
 
-        .wallet-ui { 
-            display: flex; align-items: center; gap: 12px; padding: 8px 18px; 
-            background: rgba(255,215,0,0.1); border-radius: 100px; border: 1px solid var(--gold);
-        }
+/* UI */
+.ui{position:absolute;z-index:1000}
+.glass{
+background:var(--glass);
+backdrop-filter:blur(20px);
+border-radius:20px;
+padding:10px;
+}
 
-        /* ⏳ VAQT MASHINASI (MODERN SLIDER) */
-        .time-portal { 
-            right: 25px; top: 50%; transform: translateY(-50%); 
-            padding: 30px 15px; display: flex; flex-direction: column; align-items: center; 
-        }
-        .v-slider { 
-            appearance: slider-vertical; width: 12px; height: 320px; 
-            background: var(--gold); border-radius: 100px; cursor: pointer; outline: none;
-        }
-        #year-text { 
-            font-size: 26px; font-weight: 700; color: var(--gold); 
-            margin-bottom: 25px; text-shadow: 0 0 15px var(--gold); 
-        }
+/* LOGO */
+.logo span{
+color:var(--neon);
+animation:glow 2s infinite alternate;
+}
+@keyframes glow{
+from{text-shadow:0 0 5px #00f3ff;}
+to{text-shadow:0 0 25px #00f3ff;}
+}
 
-        /* 🎮 DOCK BAR (PULT) */
-        .dock { 
-            bottom: 30px; left: 50%; transform: translateX(-50%); 
-            padding: 10px 25px; display: flex; gap: 20px;
-        }
-        .btn { 
-            width: 65px; height: 65px; border-radius: 22px; border: none; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; 
-            font-size: 26px; transition: 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28); color: white;
-        }
-        .btn:hover { transform: translateY(-10px) scale(1.1); }
-        .btn-ai { background: linear-gradient(135deg, var(--neon), var(--purple)); box-shadow: 0 10px 30px rgba(0, 243, 255, 0.5); }
-        .btn-glass { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+/* WALLET */
+.wallet{
+top:20px;right:20px;
+display:flex;gap:10px;align-items:center;
+border:1px solid var(--gold);
+}
+.coin-spin{
+animation:spin 4s linear infinite;
+}
+@keyframes spin{
+100%{transform:rotateY(360deg);}
+}
 
-        /* 🎯 RADAR HUD (XAZINA UCHUN) */
-        .radar-hud {
-            top: 100px; left: 50%; transform: translateX(-50%);
-            padding: 15px 30px; display: none; align-items: center; gap: 15px;
-            border-left: 4px solid var(--neon);
-        }
-        .pulse-dot { width: 10px; height: 10px; background: var(--neon); border-radius: 50%; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+/* PANEL */
+.panel{
+top:20px;left:20px;
+}
 
-        /* ERA FILTERS */
-        .era-past { filter: sepia(0.5) contrast(1.2) brightness(0.9) !important; }
-        .era-future { filter: hue-rotate(160deg) saturate(1.5) brightness(1.1) !important; }
-    </style>
+/* SLIDER */
+.slider{
+right:20px;top:50%;
+transform:translateY(-50%);
+}
+
+/* BUTTON */
+button{
+margin-top:5px;
+padding:10px;
+border:none;
+border-radius:10px;
+background:#00f3ff;
+cursor:pointer;
+}
+
+/* RADAR */
+#radar{
+top:100px;left:50%;
+transform:translateX(-50%);
+display:none;
+}
+</style>
 </head>
-<body onmousedown="startContext()">
 
-    <!-- PORTAL INTRO -->
-    <div id="splash" onclick="ignitePortal()">
-        <div id="dot"></div>
-        <div style="position:absolute; bottom:20%; font-size:12px; letter-spacing:5px; opacity:0.5;">SINGULYARLIKNI BOSING</div>
-    </div>
+<body onmousedown="initAudio()">
 
-    <div id="map"></div>
+<!-- INTRO -->
+<div id="splash" onclick="startApp()">
+<div id="dot"></div>
+</div>
 
-    <!-- HUD DASHBOARD -->
-    <div class="ui glass top-hub">
-        <div class="logo">TIME<span>MAP</span> ULTRA</div>
-        <div class="wallet-ui">
-            <span style="font-size: 14px; opacity: 0.7;">COINS</span>
-            <span id="coin-val" style="font-size: 20px; font-weight: 700; color: var(--gold);">200</span>
-            <span style="color: var(--gold);">🪙</span>
-        </div>
-    </div>
+<div id="map"></div>
 
-    <!-- RADAR -->
-    <div id="radar" class="ui glass radar-hud">
-        <div class="pulse-dot"></div>
-        <span id="radar-text" style="font-weight: 500; font-size: 14px; letter-spacing: 1px;">SIGNAL QIDIRILMOQDA...</span>
-    </div>
+<!-- LOGO -->
+<div class="ui glass panel">
+<div class="logo">TIME<span id="logoText">MAP</span></div>
+<button onclick="smartAI()">🧠 AI</button>
+<button onclick="startHunt()">🏆 Hunt</button>
+<button onclick="toggle3D()">3D</button>
+</div>
 
-    <!-- VAQT PULTI -->
-    <div class="ui glass time-portal">
-        <div id="year-text">2024</div>
-        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeShift(this.value)">
-    </div>
+<!-- WALLET -->
+<div class="ui glass wallet">
+<span id="coin">200</span>
+<span class="coin-spin">🪙</span>
+</div>
 
-    <!-- DOCK BAR -->
-    <div class="ui glass dock">
-        <button class="btn btn-glass" onclick="autoLocate()">📍</button>
-        <button class="btn btn-ai" onclick="smartAI()">🧠</button>
-        <button class="btn btn-glass" onclick="startHunt()">🏆</button>
-        <button class="btn btn-glass" onclick="toggle3D()">3D</button>
-        <button class="btn btn-glass" onclick="window.open('https://t.me/TimeMap0')">💰</button>
-    </div>
+<!-- SLIDER -->
+<div class="ui glass slider">
+<input type="range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
+<div id="year">2024</div>
+</div>
+
+<!-- RADAR -->
+<div id="radar" class="ui glass">Signal qidirilmoqda...</div>
 
 <script>
-// --- CONFIG & DB ---
+
+/* ================= DB ================= */
 const db = supabase.createClient(
-    "https://dfxothberdebqvxopiic.supabase.co",
-    "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
+"https://dfxothberdebqvxopiic.supabase.co",
+"sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
 );
 
-// --- MAP INIT ---
-var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.31, 69.27], 12);
-L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
+/* ================= MAP ================= */
+var map = L.map('map',{zoomControl:false}).setView([41.31,69.27],12);
 
-let audioCtx, places = [], markers = [], huntActive = false;
-let treasure = {lat:39.654, lng:66.975}; 
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-function startContext() { if(!audioCtx) audioCtx = new AudioContext(); }
+setTimeout(()=>map.invalidateSize(),500);
 
-// --- 🌌 PORTAL IGNITION (BIG BANG) ---
-function ignitePortal() {
-    document.getElementById('splash').classList.add('explode');
-    
-    // AI VOICE START
-    speak("Assalomu alaykum! TimeMap portaliga xush kelibsiz. Men sizning sun'iy intellekt yo'lboshchingizman.");
-    
-    setTimeout(() => {
-        document.getElementById('splash').style.display = 'none';
-        map.invalidateSize();
-        loadData();
-    }, 1500);
+/* ================= INTRO ================= */
+function startApp(){
+document.getElementById("splash").classList.add("explode");
+speak("TimeMap ga xush kelibsiz");
+setTimeout(()=>{
+document.getElementById("splash").style.display="none";
+load();
+},1500);
 }
 
-function speak(t) {
-    const m = new SpeechSynthesisUtterance(t);
-    m.lang = "uz-UZ";
-    m.rate = 0.9;
-    window.speechSynthesis.speak(m);
+/* ================= AUDIO ================= */
+let audioCtx;
+function initAudio(){
+if(!audioCtx) audioCtx=new AudioContext();
 }
 
-// --- ⏳ TIME SHIFT ENGINE ---
-function timeShift(y) {
-    document.getElementById('year-text').innerText = y;
-    const mDiv = document.getElementById('map');
-    
-    // Vizual effektlar
-    if(y < 1850) mDiv.className = "era-past";
-    else if(y > 2060) mDiv.className = "era-future";
-    else mDiv.className = "";
-
-    // Ovozli sfx
-    if(audioCtx) {
-        let osc = audioCtx.createOscillator();
-        let g = audioCtx.createGain();
-        osc.frequency.value = y < 1850 ? 40 : 200;
-        osc.connect(g); g.connect(audioCtx.destination);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-    }
-    
-    renderMarkers(y);
+/* ================= VOICE ================= */
+function speak(t){
+let m=new SpeechSynthesisUtterance(t);
+m.lang="uz-UZ";
+speechSynthesis.speak(m);
 }
 
-// --- 📍 DATA & MARKERS ---
-async function loadData() {
-    const {data} = await db.from("places").select("*");
-    places = data || [];
-    timeShift(2024);
+/* ================= LOGO CHANGE ================= */
+setInterval(()=>{
+let el=document.getElementById("logoText");
+el.innerText = el.innerText==="MAP" ? "AI" : "MAP";
+},3000);
+
+/* ================= WALLET ================= */
+let coin=200;
+function addCoin(c){
+coin+=c;
+document.getElementById("coin").innerText=coin;
 }
 
-function renderMarkers(y) {
-    markers.forEach(m => map.removeLayer(m));
-    markers = [];
+/* ================= DATA ================= */
+let places=[];
+let markers=[];
 
-    places.filter(p => Math.abs(p.era - y) <= 120).forEach(p => {
-        const icon = L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="background:var(--neon); width:12px; height:12px; border-radius:50%; box-shadow:0 0 15px var(--neon);"></div>`
-        });
-        let m = L.marker([p.lat, p.lng], {icon}).addTo(map);
-        m.on('click', () => {
-            speak(`Siz ${p.name.uz || p.name} nuqtasini ko'ryapsiz.`);
-            alert(p.description?.uz || p.description);
-        });
-        markers.push(m);
-    });
+async function load(){
+let {data}=await db.from("places").select("*");
+places=data||[];
+timeTravel(2024);
 }
 
-// --- 🧠 SMART AI TOP 5 ---
-function smartAI() {
-    const center = map.getCenter();
-    const sorted = places.map(p => {
-        const dist = map.distance(center, [p.lat, p.lng]);
-        return {...p, dist};
-    }).sort((a,b) => a.dist - b.dist).slice(0, 5);
+/* ================= MARKERS ================= */
+function renderMarkers(y){
+markers.forEach(m=>map.removeLayer(m));
+markers=[];
 
-    speak("Sizga eng yaqin beshta strategik joy topildi.");
-    alert("🚀 AI TAHLILI:\n" + sorted.map((p,i) => `${i+1}. ${p.name.uz || p.name}`).join("\n"));
+places.filter(p=>Math.abs(p.era-y)<=120).forEach(p=>{
+let m=L.marker([p.lat,p.lng]).addTo(map);
+m.on('click',()=>alert(p.name?.uz || p.name));
+markers.push(m);
+});
 }
 
-// --- 🏆 XAZINA QIDIRUVI (RADAR) ---
-function startHunt() {
-    huntActive = true;
-    document.getElementById('radar').style.display = 'flex';
-    speak("Xazina qidiruvi faollashdi. Signalni kuzating.");
+/* ================= TIME ================= */
+function timeTravel(y){
+document.getElementById("year").innerText=y;
+
+if(y<1800){
+document.getElementById("map").style.filter="sepia(0.6)";
+}
+else if(y>2050){
+document.getElementById("map").style.filter="hue-rotate(160deg)";
+}
+else{
+document.getElementById("map").style.filter="none";
 }
 
-map.on('move', () => {
-    if(!huntActive) return;
-    const center = map.getCenter();
-    const dist = map.distance(center, [treasure.lat, treasure.lng]);
-    const radarText = document.getElementById('radar-text');
+renderMarkers(y);
+}
 
-    if(dist < 5000) {
-        radarText.innerText = `SIGNAL: ${Math.round(dist)}m`;
-        radarText.style.color = "var(--neon)";
-        if(dist < 50) {
-            huntActive = false;
-            document.getElementById('coin-val').innerText = "700";
-            speak("Tabriklayman! Xazina topildi. 500 koin sizniki.");
-            alert("🎉 G'ALABA! +500 TC");
-            document.getElementById('radar').style.display = 'none';
-        }
-    } else {
-        radarText.innerText = "SIGNAL YO'Q...";
-        radarText.style.color = "white";
-    }
+/* ================= AI ================= */
+function smartAI(){
+if(places.length===0){
+alert("data yo‘q");
+return;
+}
+
+let c=map.getCenter();
+
+let best=places.map(p=>{
+let d=Math.sqrt(
+Math.pow(p.lat-c.lat,2)+
+Math.pow(p.lng-c.lng,2)
+);
+return {...p,score:(p.rating||1)*10-d*100};
+}).sort((a,b)=>b.score-a.score)[0];
+
+map.setView([best.lat,best.lng],15);
+speak("Eng yaxshi joy topildi");
+}
+
+/* ================= HUNT ================= */
+let treasure={lat:39.654,lng:66.975};
+let hunt=false;
+
+function startHunt(){
+hunt=true;
+document.getElementById("radar").style.display="block";
+}
+
+map.on('move',()=>{
+if(!hunt) return;
+
+let c=map.getCenter();
+let d=Math.sqrt(
+Math.pow(c.lat-treasure.lat,2)+
+Math.pow(c.lng-treasure.lng,2)
+);
+
+if(d<0.01){
+hunt=false;
+addCoin(500);
+alert("🎉 Xazina topildi!");
+document.getElementById("radar").style.display="none";
+}
 });
 
-function toggle3D() {
-    const m = document.getElementById('map');
-    m.style.transform = m.style.transform.includes("45deg") 
-        ? "none" 
-        : "perspective(1200px) rotateX(45deg) scale(1.1)";
+/* ================= 3D ================= */
+function toggle3D(){
+let m=document.getElementById("map");
+m.style.transform = m.style.transform.includes("45deg")
+? "none"
+: "perspective(1200px) rotateX(45deg) scale(1.1)";
 }
-
-function autoLocate() { map.locate({setView: true, maxZoom: 15}); }
 
 </script>
 </body>
