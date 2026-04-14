@@ -1,155 +1,217 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap Samarqand | AI Autonomous Portal</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMap Samarqand PRO</title>
 
-    <!-- 100% Ishlaydigan Kutubxonalar -->
-    <link rel="stylesheet" href="https://jsdelivr.net" />
-    <script src="https://jsdelivr.net"></script>
-    <script src="https://jsdelivr.net"></script>
+<!-- ✅ LEAFLET (MUHIM) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-    <style>
-        :root { --gold: #ffd700; --neon: #00f3ff; --glass: rgba(10, 15, 30, 0.95); }
-        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow: hidden; color: white; }
-        
-        /* Xarita qat'iy o'lchami */
-        #map { position: absolute; top:0; bottom:0; left:0; right:0; width:100% !important; height:100% !important; background: #010409; z-index: 1; transition: 1s; }
+<!-- ✅ SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 1000; position: absolute; }
-        
-        /* Dashboard */
-        .stats-panel { top: 20px; left: 20px; padding: 15px; width: 250px; }
-        .prayer-times { margin-top: 10px; font-size: 12px; color: var(--neon); border-top: 1px solid #333; padding-top: 10px; }
+<style>
+:root {
+  --gold:#ffd700;
+  --neon:#00f3ff;
+}
 
-        /* Vaqt Mashinasi */
-        .time-machine { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
-        .v-range { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+body,html {
+  margin:0;
+  height:100%;
+  background:#000;
+  font-family:sans-serif;
+  overflow:hidden;
+}
 
-        /* Controls */
-        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; z-index: 1001; }
-        .btn { width: 60px; height: 60px; border-radius: 18px; border: none; cursor: pointer; font-size: 24px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .btn-ai { background: linear-gradient(135deg, #00f3ff, #7000ff); box-shadow: 0 0 20px var(--neon); }
-        
-        /* Era Effects */
-        .past { filter: sepia(0.7) contrast(1.1) brightness(0.9); }
-        .future { filter: hue-rotate(160deg) saturate(1.5) brightness(1.1); }
-        
-        #info-card { bottom: 110px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 400px; padding: 20px; display: none; }
-    </style>
+/* Xarita */
+#map {
+  width:100%;
+  height:100%;
+}
+
+/* Panel */
+.panel {
+  position:absolute;
+  top:20px;
+  left:20px;
+  background:rgba(0,0,0,0.7);
+  padding:15px;
+  border-radius:15px;
+  color:white;
+  z-index:1000;
+}
+
+/* Tugmalar */
+.controls {
+  position:absolute;
+  bottom:30px;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  gap:10px;
+  z-index:1000;
+}
+
+.btn {
+  padding:10px 15px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+  background:linear-gradient(135deg,#00f3ff,#7000ff);
+  color:white;
+}
+
+/* Time slider */
+.time-box {
+  position:absolute;
+  right:20px;
+  top:50%;
+  transform:translateY(-50%);
+  z-index:1000;
+  color:white;
+}
+
+</style>
 </head>
-<body onmousedown="startEngine()">
 
-    <div id="map"></div>
+<body>
 
-    <!-- Stats & Prayer Panel -->
-    <div class="glass stats-panel">
-        <div style="color:var(--gold); font-weight:bold;">📍 SAMARQAND HUB</div>
-        <div id="weather">Yuklanmoqda...</div>
-        <div class="prayer-times" id="prayers">🕌 Namoz vaqtlari: ...</div>
-    </div>
+<div id="map"></div>
 
-    <!-- Time Slider -->
-    <div class="glass time-machine">
-        <span id="yearLabel" style="font-weight:bold; color:var(--gold); font-size:22px; margin-bottom:15px;">2024</span>
-        <input type="range" class="v-range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
-    </div>
+<div class="panel">
+  <b style="color:var(--gold)">📍 Samarqand</b>
+  <div id="weather">⏳ yuklanmoqda...</div>
+  <div id="prayer">🕌 ...</div>
+</div>
 
-    <div id="info-card" class="glass"></div>
+<div class="time-box">
+  <div id="year">2024</div>
+  <input type="range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
+</div>
 
-    <!-- Navigation -->
-    <div class="dock">
-        <button class="btn glass" onclick="autoFillDB()">⚡ AUTO</button>
-        <button class="btn btn-ai" onclick="runAI()">🧠</button>
-        <button class="btn glass" onclick="toggle3D()">3D</button>
-        <button class="btn glass" onclick="location.reload()">🔄</button>
-    </div>
+<div class="controls">
+  <button class="btn" onclick="autoFill()">⚡ AI</button>
+  <button class="btn" onclick="toggle3D()">3D</button>
+  <button class="btn" onclick="location.reload()">🔄</button>
+</div>
 
-    <script>
-        const S_URL = "https://supabase.co";
-        const S_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const _db = supabase.createClient(S_URL, S_KEY);
+<script>
 
-        // Xaritani majburan uyg'otish
-        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([39.654, 66.975], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+/* =========================
+   🔥 SUPABASE ULASH
+========================= */
+const SUPABASE_URL = "https://dfxothberdebqvxopiic.supabase.co";
+const SUPABASE_KEY = "SENING_ANON_KEYING"; // shu yerga qo‘y
 
-        let audioCtx;
-        function startEngine() { 
-            if(!audioCtx) audioCtx = new AudioContext(); 
-            map.invalidateSize(); // Qora ekranni yo'qotish uchun
-        }
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // --- BONUS 1: NAMAZ & WEATHER API ---
-        async function fetchSmartData() {
-            try {
-                // Namoz vaqtlari (Samarqand uchun)
-                const pRes = await fetch('https://aladhan.com');
-                const pData = await pRes.json();
-                const t = pData.data.timings;
-                document.getElementById('prayers').innerHTML = `🕌 B: ${t.Fajr} | P: ${t.Dhuhr} | A: ${t.Asr} | Sh: ${t.Maghrib} | X: ${t.Isha}`;
-                document.getElementById('weather').innerText = "☁️ 22°C | Smart City Active";
-            } catch(e) { console.log("API xatosi"); }
-        }
+/* =========================
+   🗺️ XARITA
+========================= */
+const map = L.map('map').setView([39.654, 66.975], 13);
 
-        // --- BONUS 2: AUTO FILL DB (AI SEEDER) ---
-        async function autoFillDB() {
-            const confirmFill = confirm("AI orqali bazani avtomatik to'ldirmoqchimisiz? (Faqat bo'sh bo'lsa tavsiya etiladi)");
-            if(!confirmFill) return;
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom:19
+}).addTo(map);
 
-            const dummyData = [
-                { name: "Registon Markazi", era: 1420, lat: 39.654, lng: 66.975, description: "Ulug'bek madrasasi davri.", category: "history", bonus_coins: 50 },
-                { name: "Cyber Samarkand", era: 2100, lat: 39.660, lng: 66.980, description: "Kelajakdagi transport bog'lamasi.", category: "future", bonus_coins: 100 },
-                { name: "Bibi-Xonim Masjidi", era: 1404, lat: 39.662, lng: 66.980, description: "Amir Temur qurdirgan ulkan masjid.", category: "mosque", bonus_coins: 30 }
-            ];
+/* =========================
+   📍 MARKER FUNKSIYA
+========================= */
+let markers = [];
 
-            const { data, error } = await _db.from('places').insert(dummyData);
-            if(error) alert("Xato: " + error.message);
-            else alert("Baza AI tomonidan muvaffaqiyatli to'ldirildi! 🚀");
-            location.reload();
-        }
+function clearMarkers() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+}
 
-        // --- TIME ENGINE ---
-        function timeTravel(y) {
-            document.getElementById('yearLabel').innerText = y;
-            let mDiv = document.getElementById('map');
-            mDiv.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
-            
-            // Ovoz effekti
-            if(audioCtx) {
-                let osc = audioCtx.createOscillator();
-                let g = audioCtx.createGain();
-                osc.frequency.value = y < 1850 ? 40 : 200;
-                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-                osc.connect(g); g.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-            }
-            loadPlaces(y);
-        }
+function addMarker(loc) {
+  let marker = L.marker([loc.lat, loc.lng])
+    .addTo(map)
+    .bindPopup(`<b>${loc.name}</b><br>${loc.description || ""}`);
 
-        async function loadPlaces(y) {
-            const { data } = await _db.from('places').select('*');
-            if(data) {
-                // Markerlarni chizish kodi...
-            }
-        }
+  markers.push(marker);
+}
 
-        function toggle3D() {
-            let m = document.getElementById('map');
-            m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg) scale(1.1)";
-        }
+/* =========================
+   📡 DB DAN O‘QISH
+========================= */
+async function loadPlaces(year=2024) {
+  clearMarkers();
 
-        function runAI() {
-            alert("AI: 1400-yilga o'tib, 'Bibi-Xonim' masjidini toping, sizga maxsus bonus bor!");
-        }
+  const { data, error } = await db.from('places').select('*');
 
-        window.onload = () => {
-            setTimeout(() => { 
-                map.invalidateSize(); 
-                fetchSmartData();
-            }, 600);
-        };
-    </script>
+  if(error) {
+    console.log(error);
+    return;
+  }
+
+  data.forEach(loc => {
+    if(!loc.era || loc.era <= year){
+      addMarker(loc);
+    }
+  });
+}
+
+loadPlaces();
+
+/* =========================
+   ⏳ TIME TRAVEL
+========================= */
+function timeTravel(y) {
+  document.getElementById("year").innerText = y;
+
+  if(y < 1800) document.getElementById("map").style.filter = "sepia(0.7)";
+  else if(y > 2050) document.getElementById("map").style.filter = "hue-rotate(150deg)";
+  else document.getElementById("map").style.filter = "none";
+
+  loadPlaces(y);
+}
+
+/* =========================
+   🤖 AI AUTO DATA
+========================= */
+async function autoFill() {
+  const data = [
+    { name:"Registon", lat:39.654, lng:66.975, era:1420, description:"Ulug‘bek davri" },
+    { name:"Bibi Xonim", lat:39.662, lng:66.98, era:1404, description:"Amir Temur" },
+    { name:"Future City", lat:39.66, lng:66.99, era:2100, description:"Kelajak shahri" }
+  ];
+
+  const { error } = await db.from('places').insert(data);
+
+  if(error) alert("Xato: "+error.message);
+  else {
+    alert("AI joy qo‘shdi 🚀");
+    loadPlaces();
+  }
+}
+
+/* =========================
+   🌐 WEATHER (fake demo)
+========================= */
+function loadWeather() {
+  document.getElementById("weather").innerText = "☁️ 22°C";
+  document.getElementById("prayer").innerText = "🕌 Bomdod 05:00 | Peshin 12:30";
+}
+loadWeather();
+
+/* =========================
+   🎮 3D EFFECT
+========================= */
+function toggle3D() {
+  let m = document.getElementById("map");
+  m.style.transform = m.style.transform ? "" : "perspective(1000px) rotateX(40deg)";
+}
+
+/* =========================
+   🧠 QORA EKRAN FIX
+========================= */
+setTimeout(()=>{ map.invalidateSize(); },500);
+
+</script>
+
 </body>
 </html>
