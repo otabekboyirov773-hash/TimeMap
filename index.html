@@ -1,170 +1,170 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TimeMap Global OS</title>
+<meta charset="UTF-8">
+<title>TimeMap PRO</title>
 
-    <link rel="stylesheet" href="https://jsdelivr.net" />
-    <script src="https://jsdelivr.net"></script>
-    <script src="https://jsdelivr.net"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-    <style>
-        :root { --gold: #FFD700; --neon: #00F3FF; --glass: rgba(10, 15, 30, 0.95); }
-        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Segoe UI', sans-serif; overflow:hidden; color:white; }
-        
-        #map { position:absolute; top:0; bottom:0; width:100%; height:100%; z-index: 1; transition: 0.8s filter; }
-
-        /* Portal Chaqnashi (Wow effect) */
-        #portalFlash { position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:9999; pointer-events:none; transition:0.3s; }
-
-        .ui { position:absolute; z-index:1000; pointer-events:auto; }
-        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.8); }
-
-        /* Dashboard */
-        .top-hub { top:15px; left:15px; right:15px; padding:15px 25px; display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--gold); }
-        
-        /* Vaqt Mashinasi Slayderi (Hayajonli) */
-        .time-box { right:15px; top:50%; transform:translateY(-50%); padding:25px 15px; display:flex; flex-direction:column; align-items:center; }
-        .v-slider { appearance:slider-vertical; width:15px; height:300px; background:var(--gold); border-radius:10px; cursor:pointer; }
-        #yearLabel { font-size:32px; font-weight:bold; color:var(--gold); text-shadow:0 0 15px var(--gold); }
-
-        /* Bottom Sheet (Pro UI) */
-        .sheet { position:fixed; bottom:0; left:0; right:0; background:var(--glass); border-radius:30px 30px 0 0; padding:25px; transform:translateY(100%); transition:0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index:2000; border-top:2px solid var(--neon); }
-        .sheet.active { transform:translateY(0); }
-
-        /* AI Ovozli Gid */
-        .ai-voice-box { top:100px; left:15px; padding:10px 15px; font-size:12px; border-left:3px solid var(--neon); display:none; max-width:200px; }
-
-        .btn-ai { bottom:30px; left:50%; transform:translateX(-50%); width:80px; height:80px; background:linear-gradient(135deg, var(--neon), #7000FF); border-radius:50%; border:none; box-shadow:0 0 30px var(--neon); display:flex; align-items:center; justify-content:center; font-size:32px; z-index:1001; }
-        
-        /* Era Filters */
-        .past { filter: sepia(0.7) contrast(1.1) brightness(0.8) !important; }
-        .future { filter: hue-rotate(170deg) saturate(1.8) brightness(1.2) !important; }
-    </style>
+<style>
+body,html{margin:0;height:100%;background:#000;color:white;font-family:sans-serif;}
+#map{height:100%;}
+.panel{position:absolute;top:10px;left:10px;background:#111;padding:10px;border-radius:10px;z-index:1000;width:220px;}
+button{margin-top:5px;width:100%;padding:7px;border:none;border-radius:7px;background:#00f3ff;}
+</style>
 </head>
-<body onmousedown="startPortal()">
 
-    <div id="portalFlash"></div>
-    <div id="map"></div>
+<body>
 
-    <!-- AI Ovoz Simulyatsiyasi -->
-    <div id="aiVoice" class="ui glass ai-voice-box">
-        <div style="color:var(--neon); font-weight:bold; font-size:10px;">AI GID OVOZI</div>
-        <div id="aiText">Vaqt portaliga xush kelibsiz...</div>
-    </div>
+<div id="map"></div>
 
-    <!-- Top Dashboard -->
-    <div class="ui top-hub glass">
-        <div style="font-weight:bold; font-size:20px; letter-spacing:1px;">TIMEMAP <span style="color:var(--neon)">OS</span></div>
-        <div style="color:var(--gold); font-weight:bold;">🪙 <span id="coins">1,500</span> TC</div>
-    </div>
+<div class="panel">
+<b>TimeMap</b>
 
-    <!-- Time Slider -->
-    <div class="ui time-box glass">
-        <div id="yearLabel">2024</div>
-        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeShift(this.value)">
-        <p style="font-size:10px; margin-top:10px; opacity:0.6;">PORTAL</p>
-    </div>
+<input id="email" placeholder="email">
+<input id="pass" type="password" placeholder="password">
 
-    <!-- Info Sheet -->
-    <div id="infoSheet" class="sheet">
-        <div style="width:50px; height:5px; background:rgba(255,255,255,0.2); border-radius:5px; margin: 0 auto 15px;"></div>
-        <div id="sheetContent"></div>
-        <button onclick="closeSheet()" style="width:100%; padding:18px; margin-top:20px; border-radius:15px; border:none; background:var(--gold); color:black; font-weight:bold; font-size:16px;">SAYOHATNI DAVOM ETTIRISH</button>
-    </div>
+<button onclick="signUp()">SignUp</button>
+<button onclick="signIn()">Login</button>
+<button onclick="addPlace()">+ Joy</button>
+<button onclick="myPlaces()">👤 Mening joylarim</button>
+<button onclick="topNearby()">📍 TOP 5</button>
+</div>
 
-    <!-- Main Button -->
-    <button class="ui btn-ai" onclick="runAI()">🧠</button>
+<script>
 
-    <script>
-        const SB_URL = "https://supabase.co";
-        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const _db = supabase.createClient(SB_URL, SB_KEY);
+/* CONFIG */
+const url="https://dfxothberdebqvxopiic.supabase.co";
+const key="sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0";
+const db=supabase.createClient(url,key);
 
-        var map = L.map('map', { zoomControl:false, attributionControl:false, tap:true }).setView([39.65, 66.97], 13);
-        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
-        var markerGroup = L.layerGroup().addTo(map);
+let user=null;
 
-        let audioCtx;
-        let allData = [];
+/* MAP */
+const map=L.map('map').setView([41.31,69.27],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        function startPortal() {
-            if(!audioCtx) audioCtx = new AudioContext();
-            map.invalidateSize();
-        }
+let markers=[];
 
-        // --- ⚡ VAQT MASHINASI (SOUND + FLASH) ---
-        function timeShift(y) {
-            document.getElementById('yearLabel').innerText = y;
-            let m = document.getElementById('map');
-            
-            // Flash Effect
-            const flash = document.getElementById('portalFlash');
-            flash.style.opacity = "0.3";
-            setTimeout(() => flash.style.opacity = "0", 300);
+/* AUTH */
+async function signUp(){
+ const {error}=await db.auth.signUp({
+   email:val("email"),password:val("pass")
+ });
+ alert(error?error.message:"OK");
+}
 
-            // Era Visuals
-            m.className = y < 1850 ? "past" : (y > 2060 ? "future" : "");
+async function signIn(){
+ const {data,error}=await db.auth.signInWithPassword({
+   email:val("email"),password:val("pass")
+ });
 
-            // Audio (Otlar / Mashinalar)
-            if(audioCtx) {
-                let osc = audioCtx.createOscillator();
-                let g = audioCtx.createGain();
-                osc.frequency.value = y < 1850 ? 35 : (y > 2060 ? 160 : 440);
-                osc.type = y > 2060 ? 'sawtooth' : 'sine';
-                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
-                osc.connect(g); g.connect(audioCtx.destination);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
-            }
-            renderPoints(y);
-        }
+ if(!error){
+   user=data.user;
+   alert("Login OK");
+   loadPlaces();
+ }
+}
 
-        async function loadProData() {
-            const { data } = await _db.from('places').select('*');
-            if(data) { allData = data; timeShift(2024); }
-        }
+/* ADD PLACE */
+async function addPlace(){
+ if(!user){alert("Login qil");return;}
 
-        function renderPoints(year) {
-            markerGroup.clearLayers();
-            allData.filter(p => Math.abs(p.era - year) <= 120).forEach(p => {
-                let m = L.circleMarker([p.lat, p.lng], {
-                    radius: 12, color: p.is_vip ? '#FFD700' : '#00F3FF', fillOpacity: 0.9
-                }).addTo(markerGroup);
-                m.on('click', () => showInfo(p));
-            });
-        }
+ const name=prompt("Nom:");
+ const lat=map.getCenter().lat;
+ const lng=map.getCenter().lng;
 
-        function showInfo(p) {
-            const sheet = document.getElementById('infoSheet');
-            const content = document.getElementById('sheetContent');
-            const aiBox = document.getElementById('aiVoice');
-            const lang = 'uz';
+ await db.from('places').insert([
+   {name,lat,lng,owner:user.id}
+ ]);
 
-            content.innerHTML = `
-                <div style="font-size:12px; color:var(--neon); text-transform:uppercase;">${p.country} | ${p.city}</div>
-                <h2 style="color:var(--gold); margin:5px 0;">${p.name[lang]}</h2>
-                <img src="${p.image_url}" style="width:100%; border-radius:20px; margin:15px 0;" onerror="this.src='https://picsum.photos'">
-                <p style="font-size:15px; color:#ddd; line-height:1.6;">${p.description[lang]}</p>
-                <div style="background:rgba(0,243,255,0.1); padding:15px; border-radius:15px; border-left:5px solid var(--neon);">
-                    <b style="color:var(--neon)">🧠 AI SIRI:</b> ${p.ai_fact}
-                </div>
-            `;
-            
-            // AI Ovozli yordamchi simulyatsiyasi
-            aiBox.style.display = "block";
-            document.getElementById('aiText').innerText = "Bu joy haqida ma'lumot yuklandi...";
-            
-            sheet.classList.add('active');
-        }
+ loadPlaces();
+}
 
-        function closeSheet() { document.getElementById('infoSheet').classList.remove('active'); }
+/* LOAD */
+async function loadPlaces(){
+ clear();
 
-        function runAI() {
-            alert("AI GLOBAL: Siz hozir " + allData.length + " ta portal orasida turibsiz. Eng yaqin tarixiy nuqta Rimda, kelajak Toshkentda!");
-        }
+ const {data}=await db.from('places').select('*');
 
-        window.onload = () => { setTimeout(() => { map.invalidateSize(); loadProData(); }, 600); };
-    </script>
+ data.forEach(p=>{
+   let m=L.marker([p.lat,p.lng]).addTo(map)
+   .bindPopup(`
+     <b>${p.name}</b><br>
+     ⭐ ${p.rating.toFixed(1)}
+     <br>
+     <button onclick="like('${p.id}')">❤️ Like</button>
+     <button onclick="rate('${p.id}')">⭐ Rate</button>
+   `);
+
+   markers.push(m);
+ });
+}
+
+/* LIKE */
+async function like(id){
+ await db.from('likes').insert([{user_id:user.id,place_id:id}]);
+ alert("Like qo‘shildi");
+}
+
+/* RATE */
+async function rate(id){
+ let v=prompt("1-5 baho:");
+ v=parseInt(v);
+
+ await db.from('ratings').insert([
+   {user_id:user.id,place_id:id,value:v}
+ ]);
+
+ updateRating(id);
+}
+
+/* UPDATE RATING */
+async function updateRating(id){
+ const {data}=await db.from('ratings').select('*').eq('place_id',id);
+
+ let avg=data.reduce((a,b)=>a+b.value,0)/data.length;
+
+ await db.from('places').update({rating:avg}).eq('id',id);
+
+ loadPlaces();
+}
+
+/* MY PLACES */
+async function myPlaces(){
+ clear();
+ const {data}=await db.from('places').select('*').eq('owner',user.id);
+
+ data.forEach(p=>{
+   let m=L.marker([p.lat,p.lng]).addTo(map).bindPopup("👤 "+p.name);
+   markers.push(m);
+ });
+}
+
+/* TOP NEARBY */
+async function topNearby(){
+ clear();
+ const center=map.getCenter();
+
+ const {data}=await db.from('places').select('*');
+
+ let sorted=data.sort((a,b)=>b.rating-a.rating).slice(0,5);
+
+ sorted.forEach(p=>{
+   let m=L.marker([p.lat,p.lng]).addTo(map)
+   .bindPopup("🔥 "+p.name+" ⭐"+p.rating);
+   markers.push(m);
+ });
+}
+
+/* HELP */
+function val(id){return document.getElementById(id).value;}
+function clear(){markers.forEach(m=>map.removeLayer(m));markers=[];}
+
+setTimeout(()=>map.invalidateSize(),500);
+
+</script>
 </body>
 </html>
