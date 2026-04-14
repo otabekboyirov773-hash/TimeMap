@@ -2,80 +2,80 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap PRO</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TimeMap | Amir Temur Revival</title>
     
-    <!-- Eng ishonchli kutubxonalar -->
-    <link rel="stylesheet" href="https://jsdelivr.net" />
-    <script src="https://jsdelivr.net"></script>
+    <!-- AR va Xarita kutubxonalari -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+        :root { --gold: #ffd700; --neon: #00f3ff; --royal: #1e3a8a; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: #000; overflow: hidden; font-family: 'Space Grotesk', sans-serif; }
         
-        /* Qora ekranga qarshi majburiy o'lchamlar */
-        #map { 
-            position: absolute; top: 0; bottom: 0; left: 0; right: 0; 
-            height: 100vh !important; width: 100vw !important;
-            background: #010409; z-index: 1;
-        }
+        /* Xaritani majburan ko'rsatish */
+        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; height: 100% !important; width: 100% !important; z-index: 1; background: #010409; }
 
-        /* UI Elementlar */
         .ui { position: absolute; z-index: 1000; pointer-events: auto; }
-        .glass { background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,0,0.3); border-radius: 15px; padding: 15px; color: #ffd700; }
+        .glass { background: rgba(10, 15, 30, 0.9); backdrop-filter: blur(15px); border: 1px solid rgba(255,215,0,0.3); border-radius: 20px; padding: 15px; color: #fff; }
 
-        .top-left { top: 20px; left: 20px; width: 200px; }
-        .time-panel { bottom: 30px; left: 50%; transform: translateX(-50%); width: 80%; max-width: 400px; text-align: center; }
+        /* AR Kamera oynasi */
+        #ar-view { position: fixed; top:0; left:0; width:100%; height:100%; background: #000; z-index: 5000; display: none; }
+        #avatar-overlay { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); text-align: center; width: 90%; }
         
-        input[type=range] { width: 100%; cursor: pointer; accent-color: #ffd700; }
-        
-        /* Effektlar */
-        .past { filter: sepia(0.8) contrast(1.1); }
-        .future { filter: hue-rotate(180deg) brightness(1.2); }
+        /* Intro Singulyarlik */
+        #portal { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        #singularity { width: 10px; height: 10px; background: #fff; border-radius: 50%; box-shadow: 0 0 30px #fff; transition: 1.5s; }
+        .explode #singularity { transform: scale(500); opacity: 0; }
 
-        #intro {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: black; z-index: 9999; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: 1s;
-        }
-        #dot { width: 8px; height: 8px; background: white; border-radius: 50%; box-shadow: 0 0 20px white; transition: 1s; }
-        .explode #dot { transform: scale(200); opacity: 0; }
+        .btn-ar { bottom: 30px; left: 50%; transform: translateX(-50%); padding: 15px 30px; background: linear-gradient(135deg, var(--gold), #b8860b); border: none; border-radius: 50px; font-weight: bold; color: #000; font-size: 18px; box-shadow: 0 0 20px var(--gold); cursor: pointer; }
+        
+        .history-card { top: 20px; left: 20px; width: 250px; border-left: 5px solid var(--gold); }
     </style>
 </head>
 <body>
 
-    <div id="intro" onclick="startPortal()">
-        <div id="dot"></div>
-        <div style="position: absolute; bottom: 20%; color: white; font-size: 12px; letter-spacing: 3px;">KIRISH UCHUN BOSING</div>
+    <!-- PORTAL INTRO -->
+    <div id="portal" onclick="openGate()">
+        <div id="singularity"></div>
+        <div style="position: absolute; bottom: 20%; color: var(--gold); letter-spacing: 5px; font-size: 10px;">VAQTNI JONLANTIRISH</div>
+    </div>
+
+    <!-- AR VIEW (Kamera simulyatsiyasi) -->
+    <div id="ar-view">
+        <video id="camera" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline></video>
+        <div id="avatar-overlay">
+            <img src="https://pinimg.com" id="amir-temur" style="width: 250px; filter: drop-shadow(0 0 20px var(--gold));" alt="Amir Temur">
+            <div class="glass" id="ai-speech" style="margin-top: 20px; font-size: 18px; border: 2px solid var(--gold);">
+                "Assalomu alaykum, farzandim. Men Amir Temurman. Ko'rib turganing bu Registon — mening saltanatimning yuragidir."
+            </div>
+            <button onclick="closeAR()" style="margin-top: 20px; background: #fff; color: #000; padding: 10px 20px; border-radius: 10px; border: none; font-weight: bold;">XARITAGA QAYTISH</button>
+        </div>
     </div>
 
     <div id="map"></div>
 
-    <div class="ui glass top-left">
-        <b>TIMEMAP PRO</b>
-        <div id="temp" style="font-size: 20px; margin-top: 5px;">--°C</div>
-        <div id="weather" style="font-size: 10px; color: white;">Samarqand</div>
+    <div class="ui glass history-card">
+        <b style="color: var(--gold); font-size: 20px;">TIMEMAP <span style="color: #fff;">AI</span></b>
+        <div id="weather" style="font-size: 12px; margin-top: 5px; color: var(--neon);">Samarqand: 1420-yil holati</div>
     </div>
 
-    <div class="ui glass time-panel">
-        <div id="yearDisplay" style="font-size: 24px; font-weight: bold;">2024</div>
-        <input type="range" min="1400" max="2100" value="2024" oninput="travel(this.value)">
-    </div>
+    <button class="ui btn-ar" onclick="startAR()">📸 TARIXNI JONLANTIRISH</button>
 
     <script>
-        // Xaritaning eng sodda va ishlaydigan sozlamasi
-        var map = L.map('map', { zoomControl: false }).setView([39.65, 66.97], 13);
-        
+        // Xaritani 100% chiqarish uchun qat'iy mantiq
+        var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([39.654, 66.975], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        function startPortal() {
-            document.getElementById('intro').classList.add('explode');
-            speak("Assalomu alaykum TimeMapga xush kelibsiz");
-            
+        function openGate() {
+            document.getElementById('portal').classList.add('explode');
+            speak("Vaqt portali ochildi. Amir Temur va Alisher Navoiy sizni kutmoqda.");
             setTimeout(() => {
-                document.getElementById('intro').style.display = 'none';
-                map.invalidateSize(); // Qora ekranni yo'qotuvchi asosiy buyruq
-                loadWeather();
-            }, 1000);
+                document.getElementById('portal').style.display = 'none';
+                map.invalidateSize(); // Qora ekranni yo'qotadi
+                // Har 2 soniyada xaritani tekshirish (majburiy uyg'otish)
+                setInterval(() => { map.invalidateSize(); }, 2000);
+            }, 1200);
         }
 
         function speak(text) {
@@ -84,28 +84,31 @@
             window.speechSynthesis.speak(msg);
         }
 
-        async function loadWeather() {
+        // AR FUNKSIYASI (Turistlar uchun)
+        async function startAR() {
+            const arView = document.getElementById('ar-view');
+            const video = document.getElementById('camera');
+            
             try {
-                const res = await fetch('https://open-meteo.com');
-                const data = await res.json();
-                document.getElementById('temp').innerText = Math.round(data.current_weather.temperature) + "°C";
-            } catch (e) {
-                document.getElementById('temp').innerText = "22°C";
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                arView.style.display = 'block';
+                speak("Amir Temur bilan yuzma-yuz muloqot boshlandi.");
+            } catch (err) {
+                alert("Kameraga ruxsat berilmadi yoki qurilmangiz AR-ni qo'llab-quvvatlamaydi.");
             }
         }
 
-        function travel(y) {
-            document.getElementById('yearDisplay').innerText = y;
-            const el = document.getElementById('map');
-            if(y < 1850) el.className = "past";
-            else if(y > 2060) el.className = "future";
-            else el.className = "";
+        function closeAR() {
+            const stream = document.getElementById('camera').srcObject;
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            document.getElementById('ar-view').style.display = 'none';
         }
 
-        // Agar GitHub bloklasa, bu xaritani 1 soniyadan keyin majburan qayta chizadi
         window.onload = () => {
-            setTimeout(() => { map.invalidateSize(); }, 1000);
+            setTimeout(() => { map.invalidateSize(); }, 500);
         };
     </script>
 </body>
 </html>
+
