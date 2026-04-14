@@ -3,176 +3,180 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap WOW</title>
+<title>TimeMap ULTRA | The Hunt</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com""")/>>
+<script src="https://unpkg.com"></script>
+<script src="https://jsdelivr.net"></script>
+<link href="https://googleapis.com" rel="stylesheet">
 
 <style>
-body,html{margin:0;height:100%;background:#000;color:white;font-family:sans-serif;overflow:hidden;}
-#map{width:100%;height:100%;}
+:root { --gold: #ffd700; --neon: #00f3ff; --danger: #ff4757; --glass: rgba(10, 10, 15, 0.9); }
+body,html{margin:0;height:100%;background:#000;color:white;font-family:'Space Grotesk',sans-serif;overflow:hidden;}
+#map{width:100%;height:100%;transition: 0.5s filter;}
 
-/* BIG BANG */
-#splash{
- position:fixed;width:100%;height:100%;background:#000;
- display:flex;align-items:center;justify-content:center;z-index:9999;
-}
-#dot{
- width:6px;height:6px;background:white;border-radius:50%;
- box-shadow:0 0 30px white;transition:1.5s;
-}
+/* 🌌 BIG BANG INTRO */
+#splash{ position:fixed;width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer; }
+#dot{ width:8px;height:8px;background:white;border-radius:50%;box-shadow:0 0 30px white;transition:1.5s cubic-bezier(0.9, 0, 0.1, 1); }
 .explode #dot{transform:scale(1000);opacity:0;}
 
-.ui{position:absolute;z-index:1000;background:rgba(0,0,0,0.7);padding:10px;border-radius:10px;}
-.top{top:20px;left:20px;}
-.controls{bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+/* 📱 UI DESIGN */
+.glass { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+.ui{position:absolute;z-index:1000;pointer-events: auto;}
 
-.btn{padding:10px;border:none;border-radius:8px;background:#00f3ff;cursor:pointer;}
-.locked{color:red;font-weight:bold;}
+.top-bar{top:20px; left:20px; right:20px; display:flex; justify-content:space-between; align-items:center; padding:15px 25px;}
+.wallet{font-weight:bold; color:var(--gold); display:flex; align-items:center; gap:10px; font-size:20px;}
+
+/* 📡 RADAR PANEL */
+.radar-panel{
+    top: 100px; left: 50%; transform: translateX(-50%);
+    width: 250px; padding: 20px; text-align: center;
+    border: 2px solid var(--neon); display: none;
+}
+.radar-circle{
+    width: 60px; height: 60px; border-radius: 50%; border: 1px solid var(--neon);
+    margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;
+    position: relative;
+}
+.radar-pulse{ width: 10px; height: 10px; background: var(--neon); border-radius: 50%; }
+.active-pulse{ animation: radar-beep 1s infinite; }
+@keyframes radar-beep { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(4); opacity: 0; } }
+
+/* 🎮 DOCK */
+.dock{bottom:30px;left:50%;transform:translateX(-50%);display:flex;gap:15px;}
+.btn{width:65px;height:65px;border:none;border-radius:20px;background:var(--glass);color:white;font-size:26px;cursor:pointer;transition:0.3s; display:flex; align-items:center; justify-content:center;}
+.btn-main{background:linear-gradient(135deg, var(--neon), #7000ff); box-shadow: 0 0 30px rgba(0,243,255,0.4);}
+.btn-gold{background: linear-gradient(135deg, var(--gold), #b8860b); color: black;}
+
+.past { filter: sepia(0.8) contrast(1.1); }
+.future { filter: hue-rotate(160deg) brightness(1.2); }
 </style>
 </head>
 
-<body>
+<body onmousedown="if(!window.audioCtx) window.audioCtx = new AudioContext();">
 
-<div id="splash" onclick="startApp()">
+<div id="splash" onclick="ignitePortal()">
   <div id="dot"></div>
+  <div style="position:absolute; bottom:20%; font-size:10px; letter-spacing:5px; opacity:0.5;">SINGULYARLIKNI BOSING</div>
 </div>
 
 <div id="map"></div>
 
-<div class="ui top">
-  🪙 <span id="coins">0</span>
+<!-- TOP HUB -->
+<div class="ui glass top-bar">
+  <div style="font-weight:700; letter-spacing:2px;">TIMEMAP <span style="color:var(--neon)">PRO</span></div>
+  <div class="wallet">🪙 <span id="balance">200</span></div>
 </div>
 
-<div class="ui controls">
-  <button class="btn" onclick="smartAI()">🧠 AI</button>
-  <button class="btn" onclick="timeTravel(1400)">⏳ 1400</button>
-  <button class="btn" onclick="timeTravel(2100)">🚀 2100</button>
+<!-- RADAR HUD -->
+<div id="radar" class="ui glass radar-panel">
+    <div class="radar-circle"><div id="radar-dot" class="radar-pulse"></div></div>
+    <div id="radar-status" style="font-size:12px; color:var(--neon)">SIGNAL QIDIRILMOQDA...</div>
+    <div id="dist-text" style="font-size:18px; font-weight:bold; margin-top:5px;">---- m</div>
+</div>
+
+<!-- CONTROLS -->
+<div class="dock">
+  <button class="btn glass" onclick="autoLocate()">📍</button>
+  <button class="btn btn-main" onclick="smartAI()">🧠</button>
+  <button class="btn btn-gold" onclick="startQuest()">🏆</button>
+  <button class="btn glass" onclick="timeTravel(1420)">🏛️</button>
+  <button class="btn glass" onclick="window.open('https://t.me')">💰</button>
 </div>
 
 <script>
-const db = supabase.createClient(
- "https://dfxothberdebqvxopiic.supabase.co",
- "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
-);
+const db = supabase.createClient("https://supabase.co", "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0");
 
-let map = L.map('map').setView([41.31,69.27],12);
+var map = L.map('map', {zoomControl:false, attributionControl:false}).setView([41.31,69.27], 12);
+L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let coins = 200, questActive = false;
+let treasureLoc = {lat: 39.654, lng: 66.975}; // Registon xazinasi
 
-let coins = 200;
-let places = [];
-
-/* BIG BANG */
-function startApp(){
- document.getElementById("splash").classList.add("explode");
-
- speak("TimeMapga xush kelibsiz. Siz vaqt bo‘ylab sayohat qila olasiz.");
-
- setTimeout(()=>{
-   document.getElementById("splash").style.display="none";
-   map.invalidateSize();
-   loadPlaces();
-   autoLocate();
- },1500);
+function ignitePortal(){
+    document.getElementById("splash").classList.add("explode");
+    speak("Vaqt portaliga xush kelibsiz. Men sizning AI yo'lboshchingizman.");
+    setTimeout(()=>{
+        document.getElementById("splash").style.display="none";
+        map.invalidateSize();
+        autoLocate();
+    }, 1500);
 }
 
-/* AI VOICE */
 function speak(t){
- let m=new SpeechSynthesisUtterance(t);
- m.lang="uz-UZ";
- speechSynthesis.speak(m);
+    const m = new SpeechSynthesisUtterance(t);
+    m.lang = "uz-UZ"; m.rate = 0.9;
+    speechSynthesis.speak(m);
 }
 
-/* TIME TRAVEL */
-function timeTravel(year){
- if(year<1800) map.getContainer().style.filter="sepia(1)";
- else map.getContainer().style.filter="hue-rotate(150deg)";
+function playBeep(freq, vol) {
+    if(!window.audioCtx) return;
+    let o = window.audioCtx.createOscillator();
+    let g = window.audioCtx.createGain();
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    o.connect(g); g.connect(window.audioCtx.destination);
+    o.start(); o.stop(window.audioCtx.currentTime + 0.1);
 }
 
-/* LOAD PLACES */
-async function loadPlaces(){
- let {data}=await db.from("places").select("*");
- places=data||[];
-
- places.forEach((p,i)=>{
-   let m=L.marker([p.lat,p.lng]).addTo(map);
-
-   m.on('click',()=>{
-     if(i<20){ // 🔒 20 ta blok
-       alert("🔒 Bu joy yopiq.\nInvestor bo‘ling: t.me/TimeMap0");
-       return;
-     }
-
-     alert(p.name);
-     speak(p.name);
-   });
- });
+// --- 🏆 XAZINA QUEST MANTIQI ---
+function startQuest(){
+    questActive = true;
+    document.getElementById('radar').style.display = 'block';
+    speak("Xazina qidiruvi boshlandi. Registon tomon harakatlaning va radar signallarini kuzating.");
 }
 
-/* DAILY COIN */
-let hiddenCoin = {
- lat:41.3 + Math.random()/10,
- lng:69.2 + Math.random()/10
-};
+map.on('move', () => {
+    if(!questActive) return;
+    
+    let center = map.getCenter();
+    let dist = map.distance(center, [treasureLoc.lat, treasureLoc.lng]);
+    
+    const dot = document.getElementById('radar-dot');
+    const distText = document.getElementById('dist-text');
+    const status = document.getElementById('radar-status');
 
-map.on('click',e=>{
- let d = map.distance(e.latlng,[hiddenCoin.lat,hiddenCoin.lng]);
+    if(dist < 5000) { // 5km ichida radar ishlaydi
+        distText.innerText = Math.round(dist) + " m";
+        status.innerText = "SIGNAL ANIQLANDI!";
+        dot.classList.add('active-pulse');
+        
+        // Masofa yaqinlashgan sari beep tezlashadi
+        if(Math.random() < (1 - dist/5000)) playBeep(800, 0.1);
 
- if(d < 50){
-   coins+=100;
-   document.getElementById("coins").innerText=coins;
-   alert("🎉 Yashirin coin topildi!");
-   hiddenCoin = {
-     lat:41.3 + Math.random()/10,
-     lng:69.2 + Math.random()/10
-   };
- }
+        if(dist < 50) { // 50 metr - g'alaba
+            questActive = false;
+            coins += 1000;
+            document.getElementById('balance').innerText = coins;
+            speak("Tabriklayman! Siz o'tmish xazinasini topdingiz. Mingta koin hamyoningizga o'tkazildi.");
+            alert("🎉 G'ALABA! Registon xazinasi topildi! +1000 TC");
+            document.getElementById('radar').style.display = 'none';
+        }
+    } else {
+        distText.innerText = "> 5 km";
+        status.innerText = "SIGNAL QIDIRILMOQDA...";
+        dot.classList.remove('active-pulse');
+    }
 });
 
-/* AI TOP 5 */
-function smartAI(){
- let center=map.getCenter();
-
- let sorted=places.map(p=>{
-   return {...p,dist:map.distance(center,[p.lat,p.lng])};
- }).sort((a,b)=>a.dist-b.dist).slice(0,5);
-
- let text="Yaqin joylar:\n";
- sorted.forEach((p,i)=>text+=`${i+1}. ${p.name}\n`);
-
- alert(text);
- speak(text);
+function timeTravel(year){
+    const m = document.getElementById('map');
+    if(year < 1800) {
+        m.className = "past";
+        speak("Siz Temuriylar davri qatlamiga o'tdingiz.");
+    } else {
+        m.className = "";
+    }
 }
 
-/* GEO + INFO */
 function autoLocate(){
- map.locate({setView:true});
+    map.locate({setView: true, maxZoom: 15});
+    speak("Sizning joylashuvingiz aniqlanmoqda.");
+}
 
- map.on('locationfound',async e=>{
-   let lat=e.latlng.lat;
-   let lng=e.latlng.lng;
-
-   speak("Sizning hududingiz aniqlanmoqda");
-
-   // Weather
-   fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`)
-   .then(r=>r.json())
-   .then(d=>{
-     speak(`Havo harorati ${Math.round(d.current_weather.temperature)} daraja`);
-   });
-
-   // Prayer
-   fetch(`https://api.aladhan.com/v1/timings?latitude=${lat}&longitude=${lng}&method=2`)
-   .then(r=>r.json())
-   .then(d=>{
-     let t=d.data.timings;
-     console.log(t);
-   });
- });
+function smartAI(){
+    speak("Atrofingizdagi eng qimmatli kashfiyot nuqtalari tahlil qilinmoqda.");
 }
 </script>
-
 </body>
 </html>
