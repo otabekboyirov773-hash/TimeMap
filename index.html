@@ -2,22 +2,37 @@
 <html lang="uz">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap Global 🚀</title>
+<title>TimeMap PRO MAX</title>
 
-<!-- ✅ TO‘G‘RI KUTUBXONALAR -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- MAPBOX -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet"/>
+
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <style>
-body,html{margin:0;height:100%;background:#000;color:white;font-family:sans-serif;}
-#map{height:100%;}
+body,html{margin:0;height:100%;background:black;color:white;font-family:sans-serif;overflow:hidden;}
+#map{position:absolute;top:0;bottom:0;width:100%;}
+
+#intro{
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:black;display:flex;align-items:center;justify-content:center;
+z-index:9999;
+}
+#dot{
+width:6px;height:6px;background:white;border-radius:50%;
+box-shadow:0 0 20px white;
+transition:1.2s;
+}
+.explode #dot{transform:scale(300);opacity:0;}
 
 .panel{
 position:absolute;top:10px;left:10px;
 background:#111;padding:10px;border-radius:10px;
-z-index:1000;
+z-index:1000;width:220px;
 }
 
 .wallet{
@@ -26,121 +41,193 @@ background:#111;padding:10px;border-radius:10px;
 }
 
 button{
-padding:8px;margin-top:5px;border:none;
-border-radius:8px;background:#00f3ff;
+width:100%;margin-top:5px;
+padding:8px;border:none;border-radius:8px;
+background:#00f3ff;color:black;font-weight:bold;
 cursor:pointer;
+}
+
+.slider{
+position:absolute;right:10px;top:50%;
+transform:translateY(-50%);
+background:#111;padding:10px;border-radius:10px;
 }
 </style>
 </head>
 
 <body>
 
+<!-- INTRO -->
+<div id="intro"><div id="dot"></div></div>
+
 <div id="map"></div>
 
+<!-- PANEL -->
 <div class="panel">
-<b>TimeMap 🌍</b><br>
-<button onclick="runAI()">🧠 AI</button>
-<button onclick="addPlace()">+ Joy</button>
-<button onclick="autoLocate()">📍</button>
+<b>🚀 TimeMap PRO</b>
+
+<button onclick="smartAI()">🧠 AI TOP 5</button>
+<button onclick="addPlace()">📍 Add Place</button>
+<button onclick="loadPlaces()">🔄 Reload</button>
+<button onclick="invite()">🎁 Invite</button>
+<button onclick="invest()">💰 Invest</button>
 </div>
 
-<div class="wallet">🪙 <span id="bal">200</span></div>
+<!-- WALLET -->
+<div class="wallet">🪙 <span id="coins">200</span></div>
+
+<!-- TIME SLIDER -->
+<div class="slider">
+<input type="range" min="1400" max="2100" value="2024" oninput="timeTravel(this.value)">
+<div id="year">2024</div>
+</div>
 
 <script>
 
 /* ================= CONFIG ================= */
-const SB_URL="https://dfxothberdebqvxopiic.supabase.co";
-const SB_KEY="sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0";
+const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN";
 
-const db=supabase.createClient(SB_URL,SB_KEY);
+const supabaseClient = supabase.createClient(
+"https://dfxothberdebqvxopiic.supabase.co",
+"sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
+);
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 /* ================= MAP ================= */
-const map=L.map('map').setView([41.31,69.27],7);
+const map = new mapboxgl.Map({
+container: 'map',
+style: 'mapbox://styles/mapbox/dark-v11',
+center: [69.27,41.31],
+zoom: 12,
+pitch: 60,
+bearing: -20
+});
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:19
-}).addTo(map);
+/* ================= GLOBAL ================= */
+let places = [];
+let coins = 200;
 
-let markers=[];
-let allPlaces=[];
-let balance=200;
+/* ================= INTRO ================= */
+setTimeout(()=>{
+document.getElementById("intro").classList.add("explode");
+speak("Salom TimeMap ga xush kelibsiz");
+setTimeout(()=>document.getElementById("intro").style.display="none",1200);
+},2500);
 
-/* ================= LOAD ================= */
+/* ================= AI VOICE ================= */
+function speak(text){
+let msg = new SpeechSynthesisUtterance(text);
+msg.lang = "uz-UZ";
+speechSynthesis.speak(msg);
+}
+
+/* ================= LOAD PLACES ================= */
 async function loadPlaces(){
- const {data}=await db.from('places').select('*');
- allPlaces=data||[];
- render(allPlaces);
+let {data} = await supabaseClient.from("places").select("*");
+places = data || [];
+renderMarkers();
 }
 
-/* ================= RENDER ================= */
-function render(list){
- markers.forEach(m=>map.removeLayer(m));
- markers=[];
+/* ================= MARKERS ================= */
+function renderMarkers(){
+places.forEach(p=>{
+const el = document.createElement("div");
+el.style.width="12px";
+el.style.height="12px";
+el.style.borderRadius="50%";
+el.style.background=p.is_secret?"red":"#00f3ff";
 
- list.forEach(p=>{
-  let color=p.is_locked?'red':(p.vip?'gold':'blue');
-
-  let m=L.circleMarker([p.lat,p.lng],{
-   radius:10,color:color
-  }).addTo(map)
-  .bindPopup(`
-   <b>${p.name}</b><br>
-   ${p.description||""}<br><br>
-   <button onclick="openPlace('${p.id}')">Ochish</button>
-  `);
-
-  markers.push(m);
- });
+new mapboxgl.Marker(el)
+.setLngLat([p.lng,p.lat])
+.setPopup(new mapboxgl.Popup().setHTML(`
+<b>${p.name}</b><br/>
+⭐ ${p.rating || 0}<br/>
+<button onclick="ratePlace('${p.id}')">⭐ Rate</button>
+`))
+.addTo(map);
+});
 }
 
-/* ================= ADD ================= */
+/* ================= ADD PLACE ================= */
 async function addPlace(){
- let name=prompt("Joy nomi:");
- let lat=map.getCenter().lat;
- let lng=map.getCenter().lng;
+let name = prompt("Joy nomi:");
+let center = map.getCenter();
 
- await db.from('places').insert([
-  {name,lat,lng,era:2024,is_locked:false}
- ]);
+await supabaseClient.from("places").insert([{
+name,
+lat:center.lat,
+lng:center.lng,
+era:2024,
+rating:0
+}]);
 
- loadPlaces();
+loadPlaces();
 }
 
-/* ================= OPEN ================= */
-function openPlace(id){
- let p=allPlaces.find(x=>x.id==id);
-
- if(p.is_locked){
-   if(balance>=100){
-     balance-=100;
-     document.getElementById("bal").innerText=balance;
-     alert("Sir ochildi 🔥");
-   }else{
-     alert("Coin yetarli emas");
-   }
- }else{
-   alert(p.name+" ochiq");
- }
+/* ================= RATING ================= */
+async function ratePlace(id){
+await supabaseClient.from("ratings").insert([{
+place_id:id,
+value:5
+}]);
+speak("Baho berildi");
 }
 
-/* ================= AI ================= */
-function runAI(){
- if(allPlaces.length==0){alert("data yo‘q");return;}
+/* ================= SMART AI TOP 5 ================= */
+function smartAI(){
+let center = map.getCenter();
 
- let r=allPlaces[Math.floor(Math.random()*allPlaces.length)];
+let sorted = places.map(p=>{
+let d = Math.sqrt(
+Math.pow(p.lat-center.lat,2)+
+Math.pow(p.lng-center.lng,2)
+);
 
- alert("AI tavsiya: "+r.name);
- map.setView([r.lat,r.lng],13);
+return {...p,score:(p.rating||1)*10 - d*100};
+}).sort((a,b)=>b.score-a.score).slice(0,5);
+
+alert("🔥 TOP 5:\n" + sorted.map(p=>p.name).join("\n"));
+speak("Eng yaxshi besh joy topildi");
 }
 
-/* ================= LOCATION ================= */
-function autoLocate(){
- map.locate({setView:true});
+/* ================= TIME TRAVEL ================= */
+function timeTravel(y){
+document.getElementById("year").innerText = y;
+
+if(y < 1800){
+map.setStyle("mapbox://styles/mapbox/satellite-v9");
+speak("Tarixiy davr");
+}
+else if(y > 2050){
+map.setStyle("mapbox://styles/mapbox/navigation-night-v1");
+speak("Kelajak davr");
+}
+else{
+map.setStyle("mapbox://styles/mapbox/dark-v11");
+}
+}
+
+/* ================= WALLET ================= */
+function addCoins(v){
+coins += v;
+document.getElementById("coins").innerText = coins;
+}
+
+/* ================= INVITE ================= */
+function invite(){
+let link = location.href + "?ref=123";
+navigator.clipboard.writeText(link);
+alert("Referral link nusxalandi");
+}
+
+/* ================= INVEST ================= */
+function invest(){
+window.open("https://t.me/TimeMap0?text=Investor%20bo‘lish%20istayman");
 }
 
 /* ================= INIT ================= */
 loadPlaces();
-setTimeout(()=>map.invalidateSize(),500);
 
 </script>
 
