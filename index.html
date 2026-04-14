@@ -2,96 +2,71 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
+    <title>TimeMap ULTRA | Final Portal</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TimeMap ULTRA | Vaqt Portali</title>
-
-    <!-- Kutubxonalar -->
-    <link rel="stylesheet" href="https://jsdelivr.net" />
+    
+    <!-- LEAFLET (Token shart emas, 100% ishlaydi) -->
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <script src="https://unpkg.com"></script>
+    
+    <!-- SUPABASE -->
     <script src="https://jsdelivr.net"></script>
-    <script src="https://jsdelivr.net"></script>
+    
     <link href="https://googleapis.com" rel="stylesheet">
 
     <style>
-        :root { --gold: #FFD700; --neon: #00F3FF; --purple: #BC00FF; --glass: rgba(10, 10, 15, 0.92); }
-        body, html { margin:0; height:100%; width:100%; background:#000; font-family: 'Space Grotesk', sans-serif; overflow:hidden; color:white; }
+        :root { --gold: #FFD700; --neon: #00F3FF; --glass: rgba(10, 10, 15, 0.95); }
+        body, html { margin:0; height:100%; background:#000; font-family: 'Space Grotesk', sans-serif; overflow:hidden; color:white; }
         
         /* 🌌 BIG BANG INTRO */
         #splash { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-        #singularity { width:5px; height:5px; background:white; border-radius:50%; box-shadow:0 0 30px 5px white; transition:1.5s cubic-bezier(0.9, 0, 0.1, 1); }
-        #splash.explode #singularity { transform:scale(1500); opacity:0; }
+        #singularity { width:6px; height:6px; background:white; border-radius:50%; box-shadow:0 0 30px white; transition: 1.2s cubic-bezier(0.9, 0, 0.1, 1); }
+        #splash.explode #singularity { transform: scale(1500); opacity:0; }
         #splash.explode { opacity:0; pointer-events:none; transition:1.5s; }
 
-        #map { position:absolute; top:0; bottom:0; width:100%; height:100%; z-index:1; transition: 0.8s filter; }
+        #map { position:absolute; top:0; bottom:0; width:100%; height:100%; z-index:1; background: #010409; }
         .ui { position: absolute; z-index: 1000; pointer-events: auto; }
-        .glass { background: var(--glass); backdrop-filter: blur(25px); border: 1px solid rgba(255,255,255,0.1); border-radius: 25px; box-shadow: 0 15px 50px rgba(0,0,0,0.8); }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
 
-        /* 💰 OLTIN HAMYON (WALLET UI) */
-        .wallet-ui { top: 20px; right: 20px; padding: 12px 25px; display: flex; align-items: center; gap: 15px; border: 1px solid var(--gold); }
-        .coin-icon { width: 30px; height: 30px; background: linear-gradient(45deg, var(--gold), #B8860B); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: black; box-shadow: 0 0 15px var(--gold); animation: spin 4s infinite linear; }
-        @keyframes spin { 100% { transform: rotateY(360deg); } }
-
-        /* 📡 SMART RADAR HUD */
-        .radar-hud { top: 20px; left: 50%; transform: translateX(-50%); width: 280px; padding: 15px; text-align: center; border-left: 4px solid var(--neon); display: none; }
-        .radar-circle { width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--neon); margin: 0 auto 10px; position: relative; display: flex; align-items: center; justify-content: center; }
-        .radar-pulse { width: 10px; height: 10px; background: var(--neon); border-radius: 50%; }
-        .pulse-active { animation: radar-beep 1s infinite; }
-        @keyframes radar-beep { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(4); opacity: 0; } }
-
-        /* ☁️ HUDUDIY DASHBOARD */
+        /* HUDUDIY DASHBOARD */
         .dashboard { top: 20px; left: 20px; width: 240px; padding: 20px; border-bottom: 3px solid var(--neon); }
         .weather-text { font-size: 14px; color: var(--gold); margin: 10px 0; }
-        .prayer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px; opacity: 0.8; }
 
-        /* ⏳ VAQT MASHINASI */
+        /* HAMYON */
+        .wallet { top: 20px; right: 20px; padding: 12px 20px; font-weight: bold; color: var(--gold); border: 1px solid var(--gold); }
+
+        /* VAQT MASHINASI */
         .time-box { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
         .v-slider { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
-        #year-label { font-size: 24px; font-weight: bold; color: var(--gold); margin-bottom: 20px; text-shadow: 0 0 10px var(--gold); }
+        #year-label { font-size: 24px; font-weight: bold; color: var(--gold); margin-bottom: 15px; }
 
-        /* 🔒 LOCKED MODAL */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -150%); width: 320px; padding: 35px; text-align: center; transition: 0.6s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index: 5000; }
-        .modal.active { transform: translate(-50%, -50%); }
-
-        /* 🎮 DOCK CONTROLS */
+        /* DOCK CONTROLS */
         .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; }
         .btn { width: 65px; height: 65px; border-radius: 20px; border: none; cursor: pointer; font-size: 26px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .btn-ai { background: linear-gradient(135deg, var(--neon), var(--purple)); box-shadow: 0 0 30px var(--neon); }
-        .btn:active { transform: scale(0.9); }
+        .btn-ai { background: linear-gradient(135deg, var(--neon), #7000FF); box-shadow: 0 0 25px var(--neon); }
 
-        .era-past { filter: sepia(0.6) contrast(1.1) brightness(0.9) !important; }
+        .era-past { filter: sepia(0.7) contrast(1.1) brightness(0.8) !important; }
         .era-future { filter: hue-rotate(160deg) saturate(1.8) !important; }
     </style>
 </head>
-<body onmousedown="initEngine()">
+<body onmousedown="initAudio()">
 
     <!-- INTRO -->
     <div id="splash" onclick="bigBang()">
         <div id="singularity"></div>
-        <div style="position:absolute; bottom:15%; font-size:10px; letter-spacing:8px; opacity:0.6;">SINGULYARLIKNI BOSING</div>
+        <div style="position:absolute; bottom:15%; font-size:10px; letter-spacing:8px; opacity:0.6;">PORTALNI BOSING</div>
     </div>
 
     <div id="map"></div>
 
     <!-- WALLET -->
-    <div class="ui glass wallet-ui">
-        <div class="coin-icon">TC</div>
-        <span id="balance" style="font-size: 20px; font-weight: bold;">200</span>
-    </div>
-
-    <!-- RADAR HUD -->
-    <div id="radarHud" class="ui glass radar-hud">
-        <div class="radar-circle"><div id="radarPulse" class="radar-pulse"></div></div>
-        <div id="radarStatus" style="font-size: 12px; color: var(--neon);">Xazina qidirilmoqda...</div>
-        <div id="timer" style="color: #ff4757; font-weight: bold; margin-top: 5px;">60:00</div>
-    </div>
+    <div class="ui glass wallet">🪙 <span id="balance">200</span> TC</div>
 
     <!-- REGION DASHBOARD -->
     <div class="ui glass dashboard">
-        <div id="cityName" style="font-weight: bold; letter-spacing: 2px;">O'ZBEKISTON</div>
-        <div id="weather" class="weather-text">🌤 Aniqlanmoqda...</div>
-        <div class="prayer-grid" id="prayers">
-            <div>B: --:--</div><div>P: --:--</div>
-            <div>A: --:--</div><div>Sh: --:--</div>
-        </div>
+        <div style="font-weight: bold; letter-spacing: 2px;">HUDUDIY HUB</div>
+        <div id="weather" class="weather-text">🌤 Ob-havo yuklanmoqda...</div>
+        <div id="prayer-times" style="font-size: 11px; opacity: 0.8;">Namoz vaqtlari yuklanmoqda...</div>
     </div>
 
     <!-- TIME MACHINE -->
@@ -100,21 +75,11 @@
         <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeLeap(this.value)">
     </div>
 
-    <!-- LOCK MODAL -->
-    <div id="lockModal" class="ui glass modal">
-        <h1 style="font-size: 60px; margin: 0;">🔒</h1>
-        <h3 id="lockTitle">SIRIY NUQTA</h3>
-        <p>Ochish uchun <b id="lockCost">300</b> TC kerak.</p>
-        <button onclick="unlockPlace()" style="width:100%; padding:15px; background:var(--gold); border:none; border-radius:15px; font-weight:bold; cursor:pointer; color:black;">PORTALNI OCHISH</button>
-        <button onclick="closeModal()" style="background:none; border:none; color:white; margin-top:15px; cursor:pointer; opacity:0.6;">Keyinroq</button>
-    </div>
-
     <!-- DOCK -->
     <div class="dock">
         <button class="btn glass" onclick="autoLocate()">📍</button>
-        <button class="btn btn-ai" onclick="startHunt()">🏆</button>
-        <button class="btn glass" onclick="toggle3D()">3D</button>
-        <button class="btn glass" onclick="share()">🔗</button>
+        <button class="btn btn-ai" onclick="runAI()">🧠</button>
+        <button class="btn glass" onclick="location.reload()">🔄</button>
     </div>
 
 <script>
@@ -123,163 +88,64 @@ const SB_URL = "https://supabase.co";
 const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
 const db = supabase.createClient(SB_URL, SB_KEY);
 
+// XARITA INITIALIZATSIYASI (Leaflet - 100% ishlaydi)
 var map = L.map('map', { zoomControl:false, attributionControl:false }).setView([41.31, 69.27], 12);
 L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
-var markerGroup = L.layerGroup().addTo(map);
 
-let audioCtx, myBalance = 200, huntActive = false, timeLeft = 3600;
-let treasure = { lat: 39.6548, lng: 66.9757, era: 1420 }; // Registon xazinasi
-
-function initEngine() { if(!audioCtx) audioCtx = new AudioContext(); }
+let audioCtx;
+function initAudio() { if(!audioCtx) audioCtx = new AudioContext(); }
 
 // --- 🌌 BIG BANG INTRO ---
 function bigBang() {
     document.getElementById('splash').classList.add('explode');
-    speak("Siz singulyarlikdan o'tdingiz. Vaqt portaliga xush kelibsiz.");
+    speak("Assalomu alaykum! TimeMap saytiga xush kelibsiz. Men sizning sun'iy intellekt yo'lboshchingizman.");
     setTimeout(() => {
         document.getElementById('splash').style.display = 'none';
-        map.invalidateSize();
+        map.invalidateSize(); // Qora ekranni to'g'irlash uchun
         autoLocate();
-        loadData();
-    }, 1500);
+    }, 1200);
 }
 
 // --- 🧠 AI VOICE ---
 function speak(text) {
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = 'uz-UZ';
-    msg.rate = 0.9;
+    msg.rate = 0.95;
     window.speechSynthesis.speak(msg);
 }
 
-// --- 📡 REAL-TIME DATA (WEATHER & PRAYER) ---
-async function fetchLiveInfo(lat, lng) {
+// --- 📡 REAL-TIME OB-HAVO VA NAMOZ ---
+async function fetchInfo(lat, lng) {
     try {
         const wRes = await fetch(`https://open-meteo.com{lat}&longitude=${lng}&current_weather=true`);
         const wData = await wRes.json();
-        document.getElementById('weather').innerText = `🌤 ${Math.round(wData.current_weather.temperature)}°C | Shamol: ${wData.current_weather.windspeed} km/h`;
+        document.getElementById('weather').innerText = `🌤 ${Math.round(wData.current_weather.temperature)}°C | Real-vaqt`;
 
         const pRes = await fetch(`https://aladhan.com{lat}&longitude=${lng}&method=2`);
         const pData = await pRes.json();
         const t = pData.data.timings;
-        document.getElementById('prayers').innerHTML = `<div>B: ${t.Fajr}</div><div>P: ${t.Dhuhr}</div><div>A: ${t.Asr}</div><div>Sh: ${t.Maghrib}</div>`;
-        document.getElementById('cityName').innerText = "HUDUDIY HUB";
-    } catch(e) { console.error("API error"); }
+        document.getElementById('prayer-times').innerHTML = `BOMDOD: ${t.Fajr} | PESHIN: ${t.Dhuhr} | ASR: ${t.Asr} | SHOM: ${t.Maghrib}`;
+    } catch(e) { console.error("API xatosi"); }
 }
 
 function autoLocate() {
     map.locate({setView: true, maxZoom: 14});
-    map.on('locationfound', (e) => fetchLiveInfo(e.latlng.lat, e.latlng.lng));
+    map.on('locationfound', (e) => fetchInfo(e.latlng.lat, e.latlng.lng));
 }
 
 // --- ⏳ TIME ENGINE ---
 function timeLeap(y) {
     document.getElementById('year-label').innerText = y;
     document.getElementById('map').className = y < 1850 ? "era-past" : (y > 2060 ? "era-future" : "");
-    
-    if(audioCtx) {
-        let osc = audioCtx.createOscillator();
-        osc.frequency.value = y < 1850 ? 40 : 180;
-        let g = audioCtx.createGain();
-        osc.connect(g); g.connect(audioCtx.destination);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
-    }
-    renderMarkers(y);
-    checkRadar(y);
 }
 
-// --- 🏆 XAZINA QIDIRUVI (RADAR) ---
-function startHunt() {
-    huntActive = true;
-    document.getElementById('radarHud').style.display = 'block';
-    speak("Xazina qidiruvi boshlandi. 1420-yilga o'ting va Registon atrofida radarni kuzating.");
-    
-    const timerInt = setInterval(() => {
-        if(!huntActive) clearInterval(timerInt);
-        timeLeft--;
-        let m = Math.floor(timeLeft/60), s = timeLeft%60;
-        document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
-    }, 1000);
+function runAI() {
+    speak("Sizga yaqin bo'lgan strategik joylarni tahlil qilyapman. Registon xaritasida yashirin xazina aniqlandi.");
+    alert("🚀 AI TAHLILI: Samarqandda 1420-yilgi qatlamda xazina bor!");
 }
 
-function checkRadar(y) {
-    if(!huntActive) return;
-    const dist = map.getCenter().distanceTo([treasure.lat, treasure.lng]);
-    const eraOk = (y == treasure.era);
-    const pulse = document.getElementById('radarPulse');
-    
-    if(eraOk && dist < 3000) {
-        document.getElementById('radarStatus').innerText = "SIGNAL ANIQLANDI!";
-        let speed = Math.max(0.1, dist / 1500);
-        pulse.className = "radar-pulse pulse-active";
-        pulse.style.animationDuration = speed + "s";
-        if(dist < 50) winHunt();
-    } else {
-        document.getElementById('radarStatus').innerText = eraOk ? "SIGNAL YO'Q" : "DAVR XATO";
-        pulse.className = "radar-pulse";
-    }
-}
-
-function winHunt() {
-    huntActive = false;
-    myBalance += 1000;
-    document.getElementById('balance').innerText = myBalance;
-    speak("Tabriklayman! Siz o'tmish xazinasini topdingiz. Mingta TimeCoin sizniki.");
-    alert("🎉 G'ALABA! Registon xazinasi topildi!");
-    document.getElementById('radarHud').style.display = 'none';
-}
-
-// --- 📍 DATA HANDLING ---
-async function loadData() {
-    const { data } = await db.from('places').select('*');
-    window.allPlaces = data || [];
-    timeLeap(2024);
-}
-
-function renderMarkers(y) {
-    markerGroup.clearLayers();
-    window.allPlaces.filter(p => Math.abs(p.era - y) <= 120).forEach(p => {
-        const color = p.is_locked ? '#ff4757' : (p.is_vip ? '#ffd700' : '#00f3ff');
-        L.circleMarker([p.lat, p.lng], { radius:12, color:color, fillOpacity:0.8 }).addTo(markerGroup)
-         .on('click', () => handlePlace(p));
-    });
-}
-
-function handlePlace(p) {
-    if(p.is_locked) {
-        window.selectedP = p;
-        document.getElementById('lockTitle').innerText = p.name.uz;
-        document.getElementById('lockCost').innerText = p.unlock_cost;
-        document.getElementById('lockModal').classList.add('active');
-        speak("Bu nuqta qulflangan. Maxfiy bilimni ochish uchun koin sarflang.");
-    } else {
-        speak(`Siz ${p.name.uz} nuqtasini kashf qildingiz.`);
-        alert(p.description.uz);
-    }
-}
-
-function unlockPlace() {
-    const p = window.selectedP;
-    if(myBalance >= p.unlock_cost) {
-        myBalance -= p.unlock_cost;
-        document.getElementById('balance').innerText = myBalance;
-        closeModal();
-        speak("Portal ochildi. Mana haqiqat.");
-        alert("MAXFIY BILIM: " + p.secret_content);
-    } else {
-        speak("Mablag'ingiz yetarli emas.");
-    }
-}
-
-function toggle3D() {
-    const m = document.getElementById('map');
-    m.style.transform = m.style.transform.includes("45deg") ? "none" : "perspective(1200px) rotateX(45deg) scale(1.1)";
-}
-function closeModal() { document.getElementById('lockModal').classList.remove('active'); }
-function share() { alert("Referal link nusxalandi! Do'stingiz kelsa +200 TC olasiz."); }
-
-window.onload = () => setTimeout(() => map.invalidateSize(), 500);
+// Qora ekranni majburiy yangilash
+window.onload = () => { setTimeout(() => map.invalidateSize(), 500); };
 
 </script>
 </body>
