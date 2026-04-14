@@ -1,193 +1,148 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TimeMap Global | The Portal</title>
-    
-    <link rel="stylesheet" href="https://jsdelivr.net" />
-    <script src="https://jsdelivr.net"></script>
-    <script src="https://jsdelivr.net"></script>
-    <link href="https://googleapis.com" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMap Global 🚀</title>
 
-    <style>
-        :root { --gold: #FFD700; --neon: #00F3FF; --glass: rgba(10, 15, 30, 0.95); }
-        body, html { margin:0; padding:0; height:100%; width:100%; background:#000; font-family: 'Space Grotesk', sans-serif; overflow:hidden; color:white; }
-        
-        /* 🌌 BIG BANG INTRO */
-        #splash { position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:9999; display:flex; align-items:center; justify-content:center; cursor:pointer; }
-        #singularity { width:6px; height:6px; background:white; border-radius:50%; box-shadow:0 0 30px white; transition: 1s cubic-bezier(0.9, 0, 0.1, 1); }
-        #splash.explode #singularity { transform: scale(800); opacity:0; }
-        #splash.explode { opacity:0; pointer-events:none; transition:1.5s; }
+<!-- ✅ TO‘G‘RI KUTUBXONALAR -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
-        #map { position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; }
-        .ui { position: absolute; z-index: 1000; pointer-events: auto; }
-        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
+<style>
+body,html{margin:0;height:100%;background:#000;color:white;font-family:sans-serif;}
+#map{height:100%;}
 
-        /* TOP DASHBOARD */
-        .hudud-panel { top: 20px; left: 20px; padding: 15px; width: 260px; border-left: 4px solid var(--neon); }
-        .wallet { top: 20px; right: 20px; padding: 10px 20px; font-weight: bold; color: var(--gold); border: 2px solid var(--gold); }
+.panel{
+position:absolute;top:10px;left:10px;
+background:#111;padding:10px;border-radius:10px;
+z-index:1000;
+}
 
-        /* TIME MACHINE */
-        .time-box { right: 20px; top: 50%; transform: translateY(-50%); padding: 25px 15px; display: flex; flex-direction: column; align-items: center; }
-        .v-slider { appearance: slider-vertical; width: 12px; height: 300px; background: var(--gold); border-radius: 10px; cursor: pointer; }
+.wallet{
+position:absolute;top:10px;right:10px;
+background:#111;padding:10px;border-radius:10px;
+}
 
-        /* DOCK CONTROLS */
-        .dock { bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
-        .btn { width: 65px; height: 65px; border-radius: 20px; border: none; cursor: pointer; font-size: 26px; color: white; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .btn-ai { background: linear-gradient(135deg, var(--neon), #7000FF); box-shadow: 0 0 20px var(--neon); }
-
-        /* MODALS */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -150%); width: 300px; padding: 30px; text-align: center; transition: 0.5s cubic-bezier(0.18, 0.89, 0.32, 1.28); z-index: 2000; }
-        .modal.active { transform: translate(-50%, -50%); }
-
-        /* ERA FILTERS */
-        .era-past { filter: sepia(0.6) contrast(1.1) brightness(0.9) !important; }
-        .era-future { filter: hue-rotate(160deg) saturate(1.5) brightness(1.1) !important; }
-    </style>
+button{
+padding:8px;margin-top:5px;border:none;
+border-radius:8px;background:#00f3ff;
+cursor:pointer;
+}
+</style>
 </head>
-<body onmousedown="initContext()">
 
-    <!-- INTRO -->
-    <div id="splash" onclick="bigBang()">
-        <div id="singularity"></div>
-        <div style="position:absolute; bottom:15%; font-size:10px; letter-spacing:5px; opacity:0.5;">SINGULYARLIKNI BOSING</div>
-    </div>
+<body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- UI: REAL-TIME HUB -->
-    <div class="ui glass hudud-panel">
-        <div id="regionName" style="font-weight:bold; font-size:18px; color:var(--neon);">O'ZBEKISTON</div>
-        <div id="weather" style="font-size:13px; color:var(--gold); margin:5px 0;">🌤 Yuklanmoqda...</div>
-        <div id="prayers" style="font-size:11px; opacity:0.8; display:grid; grid-template-columns:1fr 1fr; gap:5px;">Namoz vaqtlari...</div>
-    </div>
+<div class="panel">
+<b>TimeMap 🌍</b><br>
+<button onclick="runAI()">🧠 AI</button>
+<button onclick="addPlace()">+ Joy</button>
+<button onclick="autoLocate()">📍</button>
+</div>
 
-    <!-- UI: WALLET -->
-    <div class="ui glass wallet">🪙 <span id="balance">200</span> TC</div>
+<div class="wallet">🪙 <span id="bal">200</span></div>
 
-    <!-- UI: TIME SLIDER -->
-    <div class="ui glass time-box">
-        <b id="yearLabel" style="font-size:22px; color:var(--gold); margin-bottom:15px;">2024</b>
-        <input type="range" class="v-slider" min="1400" max="2100" value="2024" oninput="timeLeap(this.value)">
-    </div>
+<script>
 
-    <!-- MODAL: LOCKED SECRETS -->
-    <div id="lockModal" class="ui glass modal">
-        <h1 style="font-size:50px; margin:0;">🔒</h1>
-        <h3 id="lockTitle">MAXFIY BILIM</h3>
-        <p>Uni ochish uchun <b id="lockCost">300</b> TC kerak.</p>
-        <button onclick="unlockSecret()" style="width:100%; padding:15px; background:var(--gold); border:none; border-radius:15px; font-weight:bold; cursor:pointer;">OCHISH</button>
-        <button onclick="closeModal()" style="background:none; border:none; color:white; margin-top:10px; cursor:pointer;">Keyinroq</button>
-    </div>
+/* ================= CONFIG ================= */
+const SB_URL="https://dfxothberdebqvxopiic.supabase.co";
+const SB_KEY="sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0";
 
-    <!-- DOCK -->
-    <div class="ui dock">
-        <button class="btn glass" onclick="autoLocate()">📍</button>
-        <button class="btn btn-ai" onclick="runAI()">🧠</button>
-        <button class="btn glass" onclick="share()">🔗</button>
-    </div>
+const db=supabase.createClient(SB_URL,SB_KEY);
 
-    <script>
-        const SB_URL = "https://supabase.co";
-        const SB_KEY = "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"; 
-        const db = supabase.createClient(SB_URL, SB_KEY);
+/* ================= MAP ================= */
+const map=L.map('map').setView([41.31,69.27],7);
 
-        var map = L.map('map', { zoomControl:false, attributionControl:false, tap:true }).setView([41.31, 69.27], 12);
-        L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
-        var markerGroup = L.layerGroup().addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:19
+}).addTo(map);
 
-        let audioCtx, myBalance = 200, allPlaces = [];
+let markers=[];
+let allPlaces=[];
+let balance=200;
 
-        function initContext() { if(!audioCtx) audioCtx = new AudioContext(); }
+/* ================= LOAD ================= */
+async function loadPlaces(){
+ const {data}=await db.from('places').select('*');
+ allPlaces=data||[];
+ render(allPlaces);
+}
 
-        // --- 🌌 BIG BANG INTRO ---
-        function bigBang() {
-            document.getElementById('splash').classList.add('explode');
-            speak("Koinot portladi. Vaqt portaliga xush kelibsiz.");
-            autoLocate();
-            loadPlaces();
-        }
+/* ================= RENDER ================= */
+function render(list){
+ markers.forEach(m=>map.removeLayer(m));
+ markers=[];
 
-        // --- 🧠 AI VOICE ---
-        function speak(text) {
-            const msg = new SpeechSynthesisUtterance(text);
-            msg.lang = 'uz-UZ';
-            window.speechSynthesis.speak(msg);
-        }
+ list.forEach(p=>{
+  let color=p.is_locked?'red':(p.vip?'gold':'blue');
 
-        // --- 📡 HUDUDIY REAL-TIME DATA ---
-        async function fetchRegionalData(lat, lng) {
-            try {
-                const wRes = await fetch(`https://open-meteo.com{lat}&longitude=${lng}&current_weather=true`);
-                const wData = await wRes.json();
-                document.getElementById('weather').innerText = `🌤 ${wData.current_weather.temperature}°C | Shamol: ${wData.current_weather.windspeed} km/h`;
+  let m=L.circleMarker([p.lat,p.lng],{
+   radius:10,color:color
+  }).addTo(map)
+  .bindPopup(`
+   <b>${p.name}</b><br>
+   ${p.description||""}<br><br>
+   <button onclick="openPlace('${p.id}')">Ochish</button>
+  `);
 
-                const pRes = await fetch(`https://aladhan.com{lat}&longitude=${lng}&method=2`);
-                const pData = await pRes.json();
-                const t = pData.data.timings;
-                document.getElementById('prayers').innerHTML = `<span>B: ${t.Fajr}</span><span>P: ${t.Dhuhr}</span><span>A: ${t.Asr}</span><span>Sh: ${t.Maghrib}</span>`;
-                document.getElementById('regionName').innerText = "Hududiy Markaz";
-            } catch(e) { console.log("API Error"); }
-        }
+  markers.push(m);
+ });
+}
 
-        function autoLocate() {
-            map.locate({setView: true, maxZoom: 14});
-            map.on('locationfound', (e) => fetchRegionalData(e.latlng.lat, e.latlng.lng));
-        }
+/* ================= ADD ================= */
+async function addPlace(){
+ let name=prompt("Joy nomi:");
+ let lat=map.getCenter().lat;
+ let lng=map.getCenter().lng;
 
-        // --- ⌛ TIME MACHINE ---
-        function timeLeap(y) {
-            document.getElementById('yearLabel').innerText = y;
-            document.getElementById('map').className = y < 1850 ? "era-past" : (y > 2060 ? "era-future" : "");
-            renderMarkers(y);
-        }
+ await db.from('places').insert([
+  {name,lat,lng,era:2024,is_locked:false}
+ ]);
 
-        async function loadPlaces() {
-            const { data } = await db.from('places').select('*');
-            if(data) { allPlaces = data; timeLeap(2024); }
-        }
+ loadPlaces();
+}
 
-        function renderMarkers(year) {
-            markerGroup.clearLayers();
-            allPlaces.filter(p => Math.abs(p.era - year) <= 120).forEach(p => {
-                const color = p.is_locked ? '#ff4757' : (p.is_vip ? '#ffd700' : '#00f3ff');
-                L.circleMarker([p.lat, p.lng], { radius: 12, color: color, fillOpacity: 0.8 }).addTo(markerGroup)
-                 .on('click', () => handlePlace(p));
-            });
-        }
+/* ================= OPEN ================= */
+function openPlace(id){
+ let p=allPlaces.find(x=>x.id==id);
 
-        function handlePlace(p) {
-            if(p.is_locked) {
-                window.selectedPlace = p;
-                document.getElementById('lockTitle').innerText = p.name.uz;
-                document.getElementById('lockCost').innerText = p.unlock_cost;
-                document.getElementById('lockModal').classList.add('active');
-                speak("Bu sir qulflangan. Uni ochish uchun koin sarflang.");
-            } else {
-                speak(`Siz ${p.name.uz} nuqtasini kashf qildingiz.`);
-                alert(p.name.uz + ": " + p.description.uz);
-            }
-        }
+ if(p.is_locked){
+   if(balance>=100){
+     balance-=100;
+     document.getElementById("bal").innerText=balance;
+     alert("Sir ochildi 🔥");
+   }else{
+     alert("Coin yetarli emas");
+   }
+ }else{
+   alert(p.name+" ochiq");
+ }
+}
 
-        function unlockSecret() {
-            const p = window.selectedPlace;
-            if(myBalance >= p.unlock_cost) {
-                myBalance -= p.unlock_cost;
-                document.getElementById('balance').innerText = myBalance;
-                document.getElementById('lockModal').classList.remove('active');
-                speak("Sir ochildi. Haqiqat sizga taqdim etiladi.");
-                alert("SIRLI BILIM: " + p.secret_content);
-            } else {
-                speak("Mablag'ingiz yetarli emas. Do'stlarni chaqiring.");
-            }
-        }
+/* ================= AI ================= */
+function runAI(){
+ if(allPlaces.length==0){alert("data yo‘q");return;}
 
-        function closeModal() { document.getElementById('lockModal').classList.remove('active'); }
-        function runAI() { speak("Men barcha viloyatlar ma'lumotlarini real vaqtda tahlil qilyapman. Sayohatni davom ettiring."); }
-        function share() { alert("Referal link nusxalandi! Do'stingiz qo'shilsa +200 TC olasiz."); }
+ let r=allPlaces[Math.floor(Math.random()*allPlaces.length)];
 
-        window.onload = () => { setTimeout(map.invalidateSize, 500); };
-    </script>
+ alert("AI tavsiya: "+r.name);
+ map.setView([r.lat,r.lng],13);
+}
+
+/* ================= LOCATION ================= */
+function autoLocate(){
+ map.locate({setView:true});
+}
+
+/* ================= INIT ================= */
+loadPlaces();
+setTimeout(()=>map.invalidateSize(),500);
+
+</script>
+
 </body>
 </html>
