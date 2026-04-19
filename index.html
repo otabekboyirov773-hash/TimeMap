@@ -1,42 +1,43 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>TimeMap V12</title>
-
-<link rel="stylesheet" href="styles.css">
-<link rel="manifest" href="manifest.json">
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-</head>
-<body>
+<script>
 
-<!-- SPLASH -->
-<div id="splash">
- <div class="logo">💥 TimeMap</div>
-</div>
+const supabase = window.supabase.createClient(
+ "https://omcrlaoicvtkojeeyvwb.supabase.co",
+ "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
+);
 
-<!-- HEADER -->
-<div class="header">
- 🪙 <span id="balance">0</span>
-</div>
+// MAP
+const map = L.map('map').setView([41.3,69.2],6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-<!-- MAP -->
-<div id="map"></div>
+// USER
+let userId = localStorage.uid || crypto.randomUUID();
+localStorage.uid = userId;
 
-<!-- UI -->
-<div class="panel">
- <button onclick="claimBonus()">🎁</button>
- <button onclick="ai()">🤖</button>
-</div>
+// LOCATION
+navigator.geolocation.watchPosition(pos=>{
+ const lat = pos.coords.latitude;
+ const lng = pos.coords.longitude;
 
-<!-- APP -->
-<script type="module" src="app.js"></script>
+ loadCoins(lat,lng);
+});
 
-</body>
-</html>
+// COINS
+async function loadCoins(lat,lng){
+ const {data} = await supabase.rpc("get_nearby_coins",{p_lat:lat,p_lng:lng});
+
+ if(!data) return;
+
+ data.forEach(c=>{
+  const m = L.circleMarker([c.lat,c.lng]).addTo(map);
+
+  m.on("click",async ()=>{
+   await supabase.rpc("add_coins",{p_user:userId,amount:c.amount});
+   m.remove();
+  });
+ });
+}
+
+</script>
