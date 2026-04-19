@@ -1,32 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="uz">
 <head>
 <meta charset="UTF-8">
-<title>TEST</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>TimeMap V12 Mobile</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<style>
+body{margin:0;background:#000;color:#fff;font-family:sans-serif}
+
+/* MAP */
+#map{height:100vh}
+
+/* HEADER */
+.header{
+ position:fixed;
+ top:0;width:100%;
+ background:#111;
+ padding:10px;
+ display:flex;
+ justify-content:space-between;
+ z-index:1000;
+}
+
+/* BUTTONS */
+.panel{
+ position:fixed;
+ bottom:20px;
+ right:15px;
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+}
+
+.btn{
+ padding:14px;
+ border:none;
+ border-radius:12px;
+ background:gold;
+ color:#000;
+ font-weight:bold;
+}
+
+/* STATUS */
+.status{
+ position:fixed;
+ bottom:0;
+ width:100%;
+ text-align:center;
+ background:red;
+ display:none;
+}
+</style>
 
 </head>
 <body>
 
-<h2>TEST MAP</h2>
-<div id="map" style="height:400px"></div>
+<div class="header">
+ 🪙 <span id="balance">0</span>
+</div>
+
+<div id="map"></div>
+
+<div class="panel">
+ <button class="btn" onclick="claimBonus()">🎁</button>
+</div>
+
+<div id="status" class="status">Offline</div>
 
 <script>
 
+// ================= CONFIG =================
+const supabase = window.supabase.createClient(
+ "https://omcrlaoicvtkojeeyvwb.supabase.co",
+ "sb_publishable_g12t45A3qd15z2DML2g1og_poyavfk0"
+);
+
+// ================= USER =================
+let userId = localStorage.uid;
+if(!userId){
+ userId = crypto.randomUUID();
+ localStorage.uid = userId;
+ supabase.from("users").insert({id:userId});
+}
+
+// ================= MAP =================
 const map = L.map('map').setView([41.3,69.2],6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 .addTo(map);
 
-navigator.geolocation.getCurrentPosition(pos=>{
+// ================= LOCATION =================
+navigator.geolocation.watchPosition(pos=>{
  const lat = pos.coords.latitude;
  const lng = pos.coords.longitude;
 
- L.marker([lat,lng]).addTo(map)
-  .bindPopup("Siz shu yerdasiz");
+ L.marker([lat,lng]).addTo(map);
+
+ loadCoins(lat,lng);
 });
+
+// ================= COINS =================
+async function loadCoins(lat,lng){
+ const {data} = await supabase.rpc("get_nearby_coins",{
+  p_lat:lat,
+  p_lng:lng
+ });
+
+ if(!data) return;
+
+ data.forEach(c=>{
+  const m = L.circleMarker([c.lat,c.lng],{
+   color:"gold"
+  }).addTo(map);
+
+  m.on("click",()=>collect(c,m));
+ });
+}
+
+// ================= COLLECT =================
+async function collect(c,m){
+ m.remove();
+
+ await supabase.rpc("add_coins",{
+  p_user:userId,
+  amount:c.amount
+ });
+
+ loadBalance();
+}
+
+// ================= BALANCE =================
+async function loadBalance(){
+ const {data} = await supabase
+  .from("users")
+  .select("coins")
+  .eq("id",userId)
+  .single();
+
+ if(data) balance.innerText = data.coins;
+}
+
+// ================= BONUS =================
+async function claimBonus(){
+ const {data} = await supabase.rpc("claim_daily_bonus",{p_user:userId});
+
+ if(data === 0){
+  alert("Bugun oldingiz ❌");
+ } else {
+  alert("+"+data+" coin 🎁");
+ }
+
+ loadBalance();
+}
+
+// ================= AUTO GROW (fallback) =================
+setInterval(()=>{
+ supabase.rpc("spawn_era_coins");
+},60000);
+
+// ================= OFFLINE =================
+window.addEventListener("offline",()=>{
+ status.style.display="block";
+});
+
+window.addEventListener("online",()=>{
+ status.style.display="none";
+});
+
+// ================= INIT =================
+loadBalance();
 
 </script>
 
