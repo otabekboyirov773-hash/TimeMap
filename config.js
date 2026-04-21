@@ -1,0 +1,4 @@
+export const CONFIG = {
+  SUPABASE_URL: "YOUR_URL",
+  SUPABASE_KEY: "YOUR_KEY"
+};

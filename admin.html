@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body{background:#0f172a;color:white;font-family:sans-serif}
+.card{background:#1e293b;padding:20px;margin:10px;border-radius:10px}
+button{padding:10px;background:gold;border:none}
+</style>
+</head>
+
+<body>
+
+<h1>🧠 TIMEMAP ADMIN</h1>
+
+<div class="card">
+<button onclick="load()">📊 Load Stats</button>
+<pre id="out"></pre>
+</div>
+
+<div class="card">
+<button onclick="addPlace()">➕ Add Place</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+const supabase = supabase.createClient("URL","KEY");
+
+async function load(){
+ const users = await supabase.from("profiles").select("*");
+ const places = await supabase.from("places").select("*");
+
+ out.innerText =
+  "Users: "+users.data.length+
+  "\nPlaces: "+places.data.length;
+}
+
+async function addPlace(){
+ await supabase.from("places").insert({
+  name:"New Place",
+  lat:41.3,
+  lng:69.2,
+  era:2024
+ });
+ alert("Qo‘shildi");
+}
+</script>
+
+</body>
+</html>
