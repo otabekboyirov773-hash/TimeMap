@@ -5,38 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TimeMap ULTRA V23 | Enterprise</title>
     
-    <!-- 📦 KUTUBXONALAR (CORB xatosini oldini olish uchun standart linklar) -->
+    <!-- 📦 KUTUBXONALAR -->
     <script src="https://tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com" />
     
-    <!-- 🎨 O'ZINGIZNING CSS (Muhim: ./ qo'shildi) -->
-    <link rel="stylesheet" href="./styles.css">
-</head>
-<body class="bg-black text-white overflow-hidden h-screen w-screen relative">
+    <style>
+        /* 🎨 FAIL-SAFE CSS (Barcha dizayn shu yerda) */
+        :root { --gold: #FFD700; --neon: #00F3FF; }
+        body { background-color: black !important; color: white; margin: 0; overflow: hidden; font-family: sans-serif; }
+        
+        .glass {
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
 
-    <!-- 🌌 BIG BANG INTRO (Logotip kichraytirildi) -->
-    <div id="portal-intro" onclick="App.start()" class="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center cursor-pointer">
-        <canvas id="big-bang-canvas" class="absolute inset-0"></canvas>
-        <!-- Logotip o'lchami w-48 (192px) qilib belgilandi -->
-        <img src="./assets/logo.png" id="main-logo" class="w-48 z-10 animate-pulse drop-shadow-[0_0_30px_rgba(255,215,0,0.5)]" alt="TimeMap Logo">
-        <p class="mt-8 tracking-[8px] text-[10px] text-yellow-500 opacity-60 z-10 uppercase">Portalni portlatish uchun bosing</p>
+        #map { 
+            position: absolute; inset: 0; z-index: 0; 
+            background: #010409; transition: 1.2s;
+        }
+
+        .map-3d { transform: perspective(1000px) rotateX(25deg) scale(1.05); }
+
+        #portal-intro {
+            position: fixed; inset: 0; z-index: 9999;
+            background: black; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; cursor: pointer;
+            transition: 1s;
+        }
+
+        .explode { opacity: 0; pointer-events: none; transform: scale(1.5); }
+
+        #main-logo { width: 200px; filter: drop-shadow(0 0 20px rgba(255,215,0,0.5)); animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+    </style>
+</head>
+<body>
+
+    <!-- 🌌 BIG BANG INTRO -->
+    <div id="portal-intro" onclick="App.start()">
+        <img src="./assets/logo.png" id="main-logo" alt="TimeMap Logo">
+        <p style="margin-top: 20px; letter-spacing: 5px; color: var(--gold); font-size: 12px; text-transform: uppercase;">Portalni ochish uchun bosing</p>
     </div>
 
     <!-- 🗺 XARITA -->
-    <div id="map" class="h-full w-full absolute inset-0 z-0"></div>
+    <div id="map"></div>
 
     <!-- 💰 WALLET HUD -->
     <div class="fixed top-6 right-6 z-50 glass px-6 py-2 rounded-2xl flex items-center gap-4 border border-yellow-500/20 shadow-2xl">
         <div class="text-right">
-            <p class="text-[8px] opacity-50 uppercase">Hamyon</p>
-            <b class="text-lg text-yellow-500" id="ui-balance">500.00</b>
+            <p style="font-size: 8px; opacity: 0.5; text-transform: uppercase;">Hamyon</p>
+            <b id="ui-balance" style="color: var(--gold); font-size: 18px;">500.00</b>
         </div>
-        <div class="text-2xl animate-bounce">🪙</div>
+        <div style="font-size: 24px;">🪙</div>
     </div>
 
     <!-- 🧩 SKRIPTLAR -->
     <script src="https://unpkg.com"></script>
     <script src="https://jsdelivr.net"></script>
-    <script type="module" src="./app.js"></script>
+    
+    <!-- App mantiqi (Faqat App.start ishlatamiz) -->
+    <script type="module">
+        import { CONFIG } from './config.js';
+        const supabase = window.supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
+        let map;
+
+        window.App = {
+            start: () => {
+                document.getElementById('portal-intro').classList.add('explode');
+                const msg = new SpeechSynthesisUtterance("Vaqt portaliga xush kelibsiz");
+                msg.lang = 'uz-UZ';
+                window.speechSynthesis.speak(msg);
+                
+                setTimeout(() => {
+                    document.getElementById('portal-intro').style.display = 'none';
+                    window.App.initMap();
+                }, 1000);
+            },
+            initMap: () => {
+                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.5856, 64.2121], 15);
+                L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
+                document.getElementById('map').classList.add('map-3d');
+                setTimeout(() => map.invalidateSize(), 500);
+            }
+        };
+    </script>
 </body>
 </html>
