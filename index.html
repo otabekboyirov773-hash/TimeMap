@@ -2,110 +2,41 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TimeMap ULTRA V23 | Enterprise</title>
     
+    <!-- 📦 KUTUBXONALAR (CORB xatosini oldini olish uchun standart linklar) -->
     <script src="https://tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com" />
-    <link href="https://googleapis.com" rel="stylesheet">
-
-    <style>
-        :root { --neon: #00F3FF; --gold: #FFD700; --glass: rgba(13, 17, 23, 0.85); }
-        body { background: #000; font-family: 'Outfit', sans-serif; color: #fff; overflow: hidden; }
-        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
-        #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; transition: 1s transform; }
-        .map-3d { transform: perspective(1200px) rotateX(25deg) scale(1.05); }
-        
-        /* Intro Canvas */
-        #portal-intro { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .explode { opacity: 0; pointer-events: none; transition: 1.5s; transform: scale(2); }
-        
-        /* Scrollbar */
-        .custom-scroll::-webkit-scrollbar { width: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: var(--neon); border-radius: 10px; }
-    </style>
+    
+    <!-- 🎨 O'ZINGIZNING CSS (Muhim: ./ qo'shildi) -->
+    <link rel="stylesheet" href="./styles.css">
 </head>
-<body class="h-screen w-screen relative">
+<body class="bg-black text-white overflow-hidden h-screen w-screen relative">
 
-    <!-- 🌌 BIG BANG INTRO -->
-    <div id="portal-intro" onclick="App.start()">
+    <!-- 🌌 BIG BANG INTRO (Logotip kichraytirildi) -->
+    <div id="portal-intro" onclick="App.start()" class="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center cursor-pointer">
         <canvas id="big-bang-canvas" class="absolute inset-0"></canvas>
-        <img src="assets/logo.png" class="w-64 z-10 animate-pulse drop-shadow-[0_0_40px_rgba(255,215,0,0.4)]">
-        <p class="mt-10 tracking-[10px] text-xs text-yellow-500 opacity-60 z-10">PORTALNI OCHISH</p>
+        <!-- Logotip o'lchami w-48 (192px) qilib belgilandi -->
+        <img src="./assets/logo.png" id="main-logo" class="w-48 z-10 animate-pulse drop-shadow-[0_0_30px_rgba(255,215,0,0.5)]" alt="TimeMap Logo">
+        <p class="mt-8 tracking-[8px] text-[10px] text-yellow-500 opacity-60 z-10 uppercase">Portalni portlatish uchun bosing</p>
     </div>
 
-    <div id="map"></div>
+    <!-- 🗺 XARITA -->
+    <div id="map" class="h-full w-full absolute inset-0 z-0"></div>
 
-    <!-- 💰 TOP HUB (Logo & Wallet) -->
-    <header class="fixed top-0 inset-x-0 h-20 z-40 px-8 flex items-center justify-between pointer-events-none">
-        <div class="logo pointer-events-auto">
-            <h1 class="text-xl font-bold tracking-tighter">TIME<span class="text-[#00F3FF]">MAP</span> <small class="text-[10px] opacity-50">V23</small></h1>
+    <!-- 💰 WALLET HUD -->
+    <div class="fixed top-6 right-6 z-50 glass px-6 py-2 rounded-2xl flex items-center gap-4 border border-yellow-500/20 shadow-2xl">
+        <div class="text-right">
+            <p class="text-[8px] opacity-50 uppercase">Hamyon</p>
+            <b class="text-lg text-yellow-500" id="ui-balance">500.00</b>
         </div>
-        <div class="flex items-center gap-4 pointer-events-auto">
-            <div class="glass px-6 py-2 rounded-2xl flex items-center gap-4 border border-yellow-500/20 shadow-xl">
-                <div class="text-right">
-                    <p class="text-[8px] opacity-50 uppercase">Balans</p>
-                    <b class="text-lg text-yellow-500" id="ui-balance">500.00</b>
-                </div>
-                <div class="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-xl animate-[spin_4s_linear_infinite]">🪙</div>
-            </div>
-        </div>
-    </header>
-
-    <!-- 🛠 ADMIN TRIGGER (Faqat Admin ko'radi) -->
-    <button id="admin-btn" class="fixed bottom-32 left-6 z-50 w-14 h-14 glass rounded-2xl hidden items-center justify-center border border-cyan-400/30 text-2xl shadow-2xl hover:scale-110 transition" onclick="App.toggleAdmin()">
-        🛠
-    </button>
-
-    <!-- 🏗 ADMIN MODAL -->
-    <div id="admin-modal" class="fixed inset-y-0 left-0 w-80 glass z-50 transform -translate-x-full transition-transform duration-500 p-8 flex flex-col border-r border-white/10">
-        <h2 class="text-xl font-bold text-cyan-400 mb-8 tracking-tighter">ADMIN CONTROL</h2>
-        <div class="space-y-4 custom-scroll overflow-y-auto pr-2">
-            <div class="bg-white/5 p-5 rounded-[28px] border border-white/5 space-y-3">
-                <input id="adm-name" type="text" placeholder="Do'kon nomi" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-cyan-400 outline-none">
-                <select id="adm-cat" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none text-white/60">
-                    <option value="food">🛒 Oziq-ovqat</option>
-                    <option value="barber">✂️ Barber Shop</option>
-                    <option value="restaurant">🍴 Restoran</option>
-                </select>
-                <div class="flex gap-2">
-                    <input id="adm-lat" type="text" placeholder="Lat" class="w-1/2 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs">
-                    <input id="adm-lng" type="text" placeholder="Lng" class="w-1/2 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs">
-                </div>
-                <button onclick="App.saveShop()" class="w-full bg-cyan-500 py-4 rounded-xl font-bold text-black text-xs shadow-lg active:scale-95 transition">XARITAGA QO'SHISH</button>
-            </div>
-        </div>
+        <div class="text-2xl animate-bounce">🪙</div>
     </div>
 
-    <!-- 🧠 AI & NEARBY HUD -->
-    <aside class="fixed top-24 left-6 z-40 w-72 flex flex-col gap-4 pointer-events-none">
-        <div class="glass p-5 rounded-[32px] border-l-4 border-cyan-400 pointer-events-auto">
-            <div class="flex items-center gap-2 mb-2">
-                <span class="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
-                <b class="text-[9px] tracking-widest text-cyan-400 uppercase font-bold">AI Advisor</b>
-            </div>
-            <p id="ai-msg" class="text-xs opacity-80 leading-relaxed italic">Salom! Men sizning sun'iy intellekt yo'lboshchingizman.</p>
-        </div>
-    </aside>
-
-    <aside id="nearby-hud" class="fixed top-24 right-6 z-40 w-72 space-y-3 pointer-events-auto">
-        <!-- Dinamik do'konlar shu yerga tushadi -->
-    </aside>
-
-    <!-- 🕹️ BOTTOM HUD (Radar) -->
-    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 z-40">
-        <div class="glass px-12 py-6 rounded-[45px] border-b-4 border-cyan-400 flex items-center gap-16 shadow-2xl">
-            <button onclick="App.startHunt()" class="bg-gradient-to-r from-cyan-500 to-purple-600 px-12 py-4 rounded-full font-bold text-lg shadow-[0_0_40px_rgba(0,243,255,0.4)] hover:brightness-110 transition">QIDIRISH</button>
-            <div class="text-center">
-                <p class="text-[10px] opacity-40 uppercase tracking-widest">Radar Signal</p>
-                <b class="text-xl font-mono" id="radar-dist">125 <small class="text-xs opacity-50">m</small></b>
-            </div>
-            <button onclick="App.toggle3D()" class="text-[10px] font-bold bg-white/10 px-4 py-2 rounded-full border border-white/10">3D VIEW</button>
-        </div>
-    </div>
-
+    <!-- 🧩 SKRIPTLAR -->
     <script src="https://unpkg.com"></script>
     <script src="https://jsdelivr.net"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="./app.js"></script>
 </body>
 </html>
