@@ -5,259 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TimeMap V25</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<link rel="stylesheet" href="styles.css">
 
-<style>
-body{margin:0;background:#020617;color:#fff;font-family:sans-serif}
-
-/* LAYOUT */
-.container{display:flex;height:100vh}
-
-/* LEFT PANEL */
-.left{
- width:280px;
- background:#0b1220;
- padding:15px;
-}
-.card{
- background:#111827;
- padding:15px;
- border-radius:10px;
- margin-bottom:10px;
-}
-button{
- width:100%;
- padding:10px;
- border:none;
- border-radius:8px;
- background:#00d4ff;
- cursor:pointer;
-}
-
-/* MAP */
-#map{flex:1}
-
-/* RIGHT */
-.right{
- width:280px;
- background:#0b1220;
- padding:15px;
-}
-
-/* BIG BANG */
-#bang{
- position:fixed;
- inset:0;
- background:black;
- display:flex;
- align-items:center;
- justify-content:center;
- font-size:40px;
- z-index:999;
- animation:boom 2s forwards;
-}
-@keyframes boom{
- 0%{transform:scale(0)}
- 80%{transform:scale(2)}
- 100%{opacity:0;display:none}
-}
-
-/* RADAR */
-.radar{
- position:absolute;
- width:200px;
- height:200px;
- border-radius:50%;
- border:2px solid #00ffcc;
- animation:spin 4s linear infinite;
-}
-@keyframes spin{
- from{transform:rotate(0)}
- to{transform:rotate(360deg)}
-}
-
-/* CHAT */
-.chat{
- height:150px;
- overflow:auto;
- background:#111827;
- padding:10px;
- border-radius:10px;
- margin-bottom:5px;
-}
-</style>
+<!-- Google Maps -->
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_KEY&v=beta&libraries=maps,marker"></script>
 </head>
 
 <body>
 
-<div id="bang">💥 TimeMap</div>
-
-<div class="container">
-
-<!-- LEFT -->
-<div class="left">
-
-<div class="card">
-<h3>🎁 Kunlik bonus</h3>
-<button onclick="bonus()">Bonus olish</button>
-<p id="bonusText"></p>
+<!-- SPLASH -->
+<div id="splash">
+  <img src="assets/logo.png" id="logo">
+  <p>TimeMap</p>
 </div>
 
-<div class="card">
-<h3>🪙 Balans</h3>
-<p id="coins">0</p>
+<!-- APP -->
+<div id="app" class="hidden">
+  <div id="hud">
+    💰 <span id="coins">0</span>
+    <button onclick="window.aiSpeak()">🤖 AI</button>
+  </div>
+
+  <div id="map"></div>
 </div>
 
-<div class="card">
-<h3>🌦 Ob-havo</h3>
-<p id="weather">Yuklanmoqda...</p>
-</div>
-
-</div>
-
-<!-- MAP -->
-<div id="map"></div>
-
-<!-- RIGHT -->
-<div class="right">
-
-<h3>🤖 AI</h3>
-<div class="chat" id="chat"></div>
-<input id="msg">
-<button onclick="send()">Send</button>
-
-<h3>🏆 Leaderboard</h3>
-<div id="top"></div>
-
-</div>
-
-</div>
-
-<script>
-
-// ================= DATA =================
-let coins = parseInt(localStorage.getItem("coins")||0);
-let last = localStorage.getItem("bonus");
-
-// ================= UI =================
-function update(){
- document.getElementById("coins").innerText = coins;
- localStorage.setItem("coins",coins);
- updateTop();
-}
-
-// ================= MAP =================
-const map = L.map('map').setView([41.311,69.279],13);
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-let player = L.marker([41.311,69.279]).addTo(map);
-
-// GEO
-navigator.geolocation.watchPosition(pos=>{
- let lat = pos.coords.latitude;
- let lng = pos.coords.longitude;
-
- player.setLatLng([lat,lng]);
- map.setView([lat,lng]);
-
- loadWeather(lat,lng);
-});
-
-// ================= BONUS =================
-function bonus(){
- let today = new Date().toDateString();
-
- if(last===today){
-   document.getElementById("bonusText").innerText="Bugun oldingiz ❌";
-   return;
- }
-
- coins+=100;
- last=today;
-
- localStorage.setItem("bonus",today);
- update();
-
- document.getElementById("bonusText").innerText="+100 🎁";
-}
-
-// ================= COIN =================
-function spawnCoin(){
- let lat = 41.311+(Math.random()-0.5)/50;
- let lng = 69.279+(Math.random()-0.5)/50;
-
- let c = L.circle([lat,lng],{radius:30,color:"gold"}).addTo(map);
-
- c.on("click",()=>{
-   coins+=200;
-   update();
-   map.removeLayer(c);
-   alert("🎯 topding!");
- });
-}
-
-setInterval(spawnCoin,10000);
-
-// ================= WEATHER =================
-async function loadWeather(lat,lng){
- try{
-  let res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
-  let data = await res.json();
-
-  document.getElementById("weather").innerText =
-   data.current_weather.temperature+"°C";
- }catch{
-  document.getElementById("weather").innerText="Xato";
- }
-}
-
-// ================= AI =================
-function ai(text){
- text=text.toLowerCase();
-
- if(text.includes("bonus")) return "Har kuni bonus bor 🎁";
- if(text.includes("coin")) return "Xaritada topasiz 🪙";
- return "Tushundim 👍";
-}
-
-function send(){
- let v=document.getElementById("msg").value;
-
- add("👤 "+v);
- let r=ai(v);
- add("🤖 "+r);
-
- speechSynthesis.speak(new SpeechSynthesisUtterance(r));
-}
-
-function add(t){
- let d=document.createElement("div");
- d.innerText=t;
- document.getElementById("chat").appendChild(d);
-}
-
-// ================= LEADERBOARD =================
-function updateTop(){
- let arr = JSON.parse(localStorage.getItem("top")||"[]");
-
- arr.push(coins);
- arr.sort((a,b)=>b-a);
- arr=arr.slice(0,5);
-
- localStorage.setItem("top",JSON.stringify(arr));
-
- let html="";
- arr.forEach(i=>html+="<div>"+i+"</div>");
-
- document.getElementById("top").innerHTML=html;
-}
-
-// ================= START =================
-update();
-
-</script>
+<script type="module" src="app.js"></script>
 
 </body>
 </html>

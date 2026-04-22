@@ -1,30 +1,35 @@
+import { initMap3D } from "./modules/map.js";
 import { initUser, getBalance } from "./modules/user.js";
-import { initMap } from "./modules/map.js";
-import { loadCoins } from "./modules/coins.js";
 import { speak } from "./modules/ai.js";
-import { updateBalance, splashHide } from "./modules/ui.js";
-import { initOffline } from "./modules/utils.js";
+import { loadCoins } from "./modules/coins.js";
 
-await initUser();
-initMap();
-initOffline();
-splashHide();
+// SPLASH CLICK
+document.getElementById("logo").onclick = async () => {
 
-// 📡 LOCATION
-navigator.geolocation.watchPosition(async pos=>{
- const lat = pos.coords.latitude;
- const lng = pos.coords.longitude;
+  const splash = document.getElementById("splash");
 
- loadCoins(lat,lng);
-});
+  splash.classList.add("boom");
 
-// 💰 BALANCE
+  setTimeout(async () => {
+    splash.remove();
+
+    document.getElementById("app").classList.remove("hidden");
+
+    await initUser();
+    initMap3D();
+
+    speak("TimeMap ga xush kelibsiz");
+
+  }, 800);
+};
+
+// BALANCE UPDATE
 setInterval(async ()=>{
- const b = await getBalance();
- updateBalance(b);
+  const b = await getBalance();
+  document.getElementById("coins").innerText = b;
 },2000);
 
-// 🤖 AI
-window.ai = ()=>{
- speak("TimeMap ishlayapti 🚀");
-};
+// LOCATION + COINS
+navigator.geolocation.watchPosition(pos=>{
+  loadCoins(pos.coords.latitude, pos.coords.longitude);
+});
