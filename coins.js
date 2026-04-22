@@ -1,17 +1,20 @@
-export function loadCoins(lat,lng){
+export const Coins = {
+    fly: (startX, startY) => {
+        const flyer = document.createElement('div');
+        flyer.className = 'flying-coin';
+        flyer.style.left = `${startX}px`;
+        flyer.style.top = `${startY}px`;
+        document.body.appendChild(flyer);
 
- // fake demo coin
- const el = document.createElement("div");
- el.innerText="🪙";
- el.style.position="fixed";
- el.style.left=Math.random()*90+"%";
- el.style.top=Math.random()*90+"%";
- el.style.fontSize="24px";
+        const wallet = document.querySelector('.wallet-box').getBoundingClientRect();
 
- document.body.appendChild(el);
+        setTimeout(() => {
+            flyer.style.left = `${wallet.left + 20}px`;
+            flyer.style.top = `${wallet.top + 20}px`;
+            flyer.style.transform = "scale(0.2) rotate(720deg)";
+            flyer.style.opacity = "0";
+        }, 50);
 
- el.onclick=()=>{
-   el.remove();
-   alert("Coin topding!");
- };
-}
+        setTimeout(() => flyer.remove(), 1000);
+    }
+};

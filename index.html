@@ -1,173 +1,111 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap Final</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TimeMap ULTRA V23 | Enterprise</title>
+    
+    <script src="https://tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com" />
+    <link href="https://googleapis.com" rel="stylesheet">
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-<style>
-body{margin:0;background:#020617;color:white;font-family:sans-serif}
-
-/* SPLASH */
-#splash{
- position:fixed; inset:0;
- display:flex; flex-direction:column;
- align-items:center; justify-content:center;
- background:black; z-index:999;
-}
-#logo{width:120px;cursor:pointer}
-.boom{animation:boom 1s forwards}
-@keyframes boom{100%{transform:scale(20);opacity:0}}
-
-/* MAP */
-#map{height:100vh}
-
-/* HUD */
-#hud{
- position:fixed; top:10px; left:10px;
- background:#000a; padding:10px;
- border-radius:10px; z-index:10;
-}
-
-/* RADAR */
-#radar{
- position:fixed;
- bottom:20px; right:20px;
- width:120px; height:120px;
- border-radius:50%;
- border:2px solid cyan;
- animation:spin 3s linear infinite;
-}
-@keyframes spin{
- from{transform:rotate(0)}
- to{transform:rotate(360deg)}
-}
-</style>
+    <style>
+        :root { --neon: #00F3FF; --gold: #FFD700; --glass: rgba(13, 17, 23, 0.85); }
+        body { background: #000; font-family: 'Outfit', sans-serif; color: #fff; overflow: hidden; }
+        .glass { background: var(--glass); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.05); }
+        #map { height: 100vh; width: 100vw; position: absolute; z-index: 1; transition: 1s transform; }
+        .map-3d { transform: perspective(1200px) rotateX(25deg) scale(1.05); }
+        
+        /* Intro Canvas */
+        #portal-intro { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .explode { opacity: 0; pointer-events: none; transition: 1.5s; transform: scale(2); }
+        
+        /* Scrollbar */
+        .custom-scroll::-webkit-scrollbar { width: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: var(--neon); border-radius: 10px; }
+    </style>
 </head>
+<body class="h-screen w-screen relative">
 
-<body>
+    <!-- 🌌 BIG BANG INTRO -->
+    <div id="portal-intro" onclick="App.start()">
+        <canvas id="big-bang-canvas" class="absolute inset-0"></canvas>
+        <img src="assets/logo.png" class="w-64 z-10 animate-pulse drop-shadow-[0_0_40px_rgba(255,215,0,0.4)]">
+        <p class="mt-10 tracking-[10px] text-xs text-yellow-500 opacity-60 z-10">PORTALNI OCHISH</p>
+    </div>
 
-<!-- SPLASH -->
-<div id="splash">
- <img src="https://cdn-icons-png.flaticon.com/512/854/854878.png" id="logo">
- <h2>TimeMap</h2>
-</div>
+    <div id="map"></div>
 
-<div id="app" style="display:none">
- <div id="hud">
-   💰 <span id="coins">0</span><br>
-   🏆 <span id="top">0</span><br>
-   <button onclick="bonus()">🎁 Bonus</button>
-   <button onclick="ai()">🤖 AI</button>
- </div>
+    <!-- 💰 TOP HUB (Logo & Wallet) -->
+    <header class="fixed top-0 inset-x-0 h-20 z-40 px-8 flex items-center justify-between pointer-events-none">
+        <div class="logo pointer-events-auto">
+            <h1 class="text-xl font-bold tracking-tighter">TIME<span class="text-[#00F3FF]">MAP</span> <small class="text-[10px] opacity-50">V23</small></h1>
+        </div>
+        <div class="flex items-center gap-4 pointer-events-auto">
+            <div class="glass px-6 py-2 rounded-2xl flex items-center gap-4 border border-yellow-500/20 shadow-xl">
+                <div class="text-right">
+                    <p class="text-[8px] opacity-50 uppercase">Balans</p>
+                    <b class="text-lg text-yellow-500" id="ui-balance">500.00</b>
+                </div>
+                <div class="w-10 h-10 bg-yellow-500/10 rounded-full flex items-center justify-center text-xl animate-[spin_4s_linear_infinite]">🪙</div>
+            </div>
+        </div>
+    </header>
 
- <div id="map"></div>
- <div id="radar"></div>
-</div>
+    <!-- 🛠 ADMIN TRIGGER (Faqat Admin ko'radi) -->
+    <button id="admin-btn" class="fixed bottom-32 left-6 z-50 w-14 h-14 glass rounded-2xl hidden items-center justify-center border border-cyan-400/30 text-2xl shadow-2xl hover:scale-110 transition" onclick="App.toggleAdmin()">
+        🛠
+    </button>
 
-<script>
-let coins = 0;
-let map;
-let userMarker;
+    <!-- 🏗 ADMIN MODAL -->
+    <div id="admin-modal" class="fixed inset-y-0 left-0 w-80 glass z-50 transform -translate-x-full transition-transform duration-500 p-8 flex flex-col border-r border-white/10">
+        <h2 class="text-xl font-bold text-cyan-400 mb-8 tracking-tighter">ADMIN CONTROL</h2>
+        <div class="space-y-4 custom-scroll overflow-y-auto pr-2">
+            <div class="bg-white/5 p-5 rounded-[28px] border border-white/5 space-y-3">
+                <input id="adm-name" type="text" placeholder="Do'kon nomi" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-cyan-400 outline-none">
+                <select id="adm-cat" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none text-white/60">
+                    <option value="food">🛒 Oziq-ovqat</option>
+                    <option value="barber">✂️ Barber Shop</option>
+                    <option value="restaurant">🍴 Restoran</option>
+                </select>
+                <div class="flex gap-2">
+                    <input id="adm-lat" type="text" placeholder="Lat" class="w-1/2 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs">
+                    <input id="adm-lng" type="text" placeholder="Lng" class="w-1/2 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs">
+                </div>
+                <button onclick="App.saveShop()" class="w-full bg-cyan-500 py-4 rounded-xl font-bold text-black text-xs shadow-lg active:scale-95 transition">XARITAGA QO'SHISH</button>
+            </div>
+        </div>
+    </div>
 
-// 📍 MARKET KOORDINATA (SEN BERGAN)
-const MARKET = {
- lat:41.585697,
- lng:64.212129,
- name:"Eng Arzon Market 🛒"
-};
+    <!-- 🧠 AI & NEARBY HUD -->
+    <aside class="fixed top-24 left-6 z-40 w-72 flex flex-col gap-4 pointer-events-none">
+        <div class="glass p-5 rounded-[32px] border-l-4 border-cyan-400 pointer-events-auto">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
+                <b class="text-[9px] tracking-widest text-cyan-400 uppercase font-bold">AI Advisor</b>
+            </div>
+            <p id="ai-msg" class="text-xs opacity-80 leading-relaxed italic">Salom! Men sizning sun'iy intellekt yo'lboshchingizman.</p>
+        </div>
+    </aside>
 
-// SPLASH → BING BANG
-logo.onclick = ()=>{
- splash.classList.add("boom");
+    <aside id="nearby-hud" class="fixed top-24 right-6 z-40 w-72 space-y-3 pointer-events-auto">
+        <!-- Dinamik do'konlar shu yerga tushadi -->
+    </aside>
 
- setTimeout(()=>{
-   splash.remove();
-   app.style.display="block";
-   startApp();
-   speak("TimeMap ga xush kelibsiz");
- },800);
-};
+    <!-- 🕹️ BOTTOM HUD (Radar) -->
+    <div class="fixed bottom-10 left-1/2 -translate-x-1/2 z-40">
+        <div class="glass px-12 py-6 rounded-[45px] border-b-4 border-cyan-400 flex items-center gap-16 shadow-2xl">
+            <button onclick="App.startHunt()" class="bg-gradient-to-r from-cyan-500 to-purple-600 px-12 py-4 rounded-full font-bold text-lg shadow-[0_0_40px_rgba(0,243,255,0.4)] hover:brightness-110 transition">QIDIRISH</button>
+            <div class="text-center">
+                <p class="text-[10px] opacity-40 uppercase tracking-widest">Radar Signal</p>
+                <b class="text-xl font-mono" id="radar-dist">125 <small class="text-xs opacity-50">m</small></b>
+            </div>
+            <button onclick="App.toggle3D()" class="text-[10px] font-bold bg-white/10 px-4 py-2 rounded-full border border-white/10">3D VIEW</button>
+        </div>
+    </div>
 
-// START
-function startApp(){
- map = L.map('map').setView([41.311,69.279], 6);
-
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
- // MARKET QO‘SHISH
- const marketMarker = L.marker([MARKET.lat,MARKET.lng]).addTo(map);
- marketMarker.bindPopup("🛒 Eng arzon oziq-ovqat do‘koni");
-
- // LOCATION
- navigator.geolocation.watchPosition(pos=>{
-   const lat = pos.coords.latitude;
-   const lng = pos.coords.longitude;
-
-   if(userMarker) map.removeLayer(userMarker);
-
-   userMarker = L.marker([lat,lng]).addTo(map);
-   map.setView([lat,lng],15);
-
-   spawnCoin(lat,lng);
-   checkNearMarket(lat,lng);
- });
-}
-
-// COIN
-function spawnCoin(lat,lng){
- const cLat = lat + (Math.random()-0.5)/200;
- const cLng = lng + (Math.random()-0.5)/200;
-
- const coin = L.circleMarker([cLat,cLng],{
-   radius:8,color:"gold"
- }).addTo(map);
-
- coin.on("click",()=>{
-   coins+=10;
-   update();
-   map.removeLayer(coin);
- });
-}
-
-// BONUS
-function bonus(){
- coins+=50;
- update();
- alert("+50 coin 🎁");
-}
-
-// UPDATE
-function update(){
- document.getElementById("coins").innerText = coins;
-}
-
-// MARKET YAQINMI → TOP
-function checkNearMarket(lat,lng){
- const dist = Math.sqrt(
-   (lat - MARKET.lat)**2 + (lng - MARKET.lng)**2
- );
-
- if(dist < 0.01){
-   document.getElementById("top").innerText = "TOP 🔥";
- }
-}
-
-// AI OVOZ
-function speak(text){
- const u = new SpeechSynthesisUtterance(text);
- u.lang="uz-UZ";
- u.rate=1;
- speechSynthesis.speak(u);
-}
-
-function ai(){
- speak("Eng arzon market shu yerda joylashgan");
-}
-</script>
-
+    <script src="https://unpkg.com"></script>
+    <script src="https://jsdelivr.net"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -1,0 +1,28 @@
+# 🤫 SECRETS (Maxfiy ma'lumotlar)
+# Agar config.js da haqiqiy API kalitlar bo'lsa va uni yashirmoqchi bo'lsangiz:
+# config.js
+
+# 📦 DEPENDENCIES (Agar npm ishlatayotgan bo'lsangiz)
+node_modules/
+dist/
+
+# 🖥 IDE & EDITORS (Dasturlash muhiti fayllari)
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 🍎 OS FILES (Operatsion tizim axlatlari)
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 📝 LOGS & TEMP (Vaqtinchalik fayllar)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
