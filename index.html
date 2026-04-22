@@ -3,33 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap V25</title>
+<title>TimeMap V25 ULTRA</title>
 
-<link rel="stylesheet" href="styles.css">
+<!-- MAP -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<!-- Google Maps -->
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_KEY&v=beta&libraries=maps,marker"></script>
+<style>
+body{margin:0;background:#020617;color:white;font-family:sans-serif}
+
+/* SPLASH */
+#splash{
+ position:fixed; inset:0; display:flex;
+ flex-direction:column; align-items:center; justify-content:center;
+ background:black; z-index:999;
+}
+#logo{width:120px;cursor:pointer}
+.boom{animation:boom 1s forwards}
+@keyframes boom{100%{transform:scale(20);opacity:0}}
+
+/* UI */
+#map{height:100vh}
+#hud{
+ position:fixed; top:10px; left:10px;
+ background:#000a; padding:10px;
+ border-radius:10px; z-index:10;
+}
+#right{
+ position:fixed; right:10px; top:10px;
+ width:260px; background:#000a;
+ padding:10px; border-radius:10px;
+}
+
+button{margin-top:5px;padding:6px;width:100%}
+</style>
 </head>
 
 <body>
 
-<!-- SPLASH -->
 <div id="splash">
-  <img src="assets/logo.png" id="logo">
-  <p>TimeMap</p>
+  <img src="https://cdn-icons-png.flaticon.com/512/854/854878.png" id="logo">
+  <h2>TimeMap V25</h2>
 </div>
 
-<!-- APP -->
-<div id="app" class="hidden">
+<div id="app" style="display:none">
   <div id="hud">
-    💰 <span id="coins">0</span>
-    <button onclick="window.aiSpeak()">🤖 AI</button>
+    💰 <span id="coins">100</span><br>
+    <button onclick="dailyBonus()">🎁 Bonus</button>
+    <button onclick="ai()">🤖 AI</button>
+  </div>
+
+  <div id="right">
+    🌤 <div id="weather">Loading...</div>
+    <hr>
+    🏆 <div id="leaderboard"></div>
   </div>
 
   <div id="map"></div>
 </div>
 
-<script type="module" src="app.js"></script>
+<script>
+let coins = 100;
+let map;
+
+// SPLASH
+logo.onclick=()=>{
+ splash.classList.add("boom");
+ setTimeout(()=>{
+   splash.remove();
+   app.style.display="block";
+   start();
+   speak("TimeMap ga xush kelibsiz");
+ },800);
+};
+
+// START
+function start(){
+ map = L.map('map').setView([41.311,69.279], 13);
+
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+ navigator.geolocation.watchPosition(pos=>{
+   const lat = pos.coords.latitude;
+   const lng = pos.coords.longitude;
+
+   map.setView([lat,lng],15);
+   L.marker([lat,lng]).addTo(map);
+
+   spawnCoins(lat,lng);
+   spawnLockedPlace(lat,lng);
+   loadWeather(lat,lng);
+ });
+
+ loadLeaderboard();
+}
+
+// COINS (UZBEKISTAN RANDOM)
+function spawnCoins(lat,lng){
+ for(let i=0;i<3;i++){
+   const cLat = lat+(Math.random()-0.5)/100;
+   const cLng = lng+(Math.random()-0.5)/100;
+
+   const coin = L.marker([cLat,cLng]).addTo(map);
+
+   coin.on("click",()=>{
+     coins+=10;
+     update();
+     map.removeLayer(coin);
+   });
+ }
+}
+
+// LOCKED PLACE (INVESTOR)
+function spawnLockedPlace(lat,lng){
+ const pLat = lat+0.01;
+ const pLng = lng+0.01;
+
+ const lock = L.marker([pLat,pLng]).addTo(map);
+
+ lock.on("click",()=>{
+   if(coins>=50){
+     coins-=50;
+     update();
+     alert("🔓 Ochildi! Investor bo‘ldingiz");
+   }else{
+     alert("Yetarli coin yo‘q");
+   }
+ });
+}
+
+// BONUS
+function dailyBonus(){
+ coins+=50;
+ update();
+}
+
+// UPDATE UI
+function update(){
+ document.getElementById("coins").innerText=coins;
+}
+
+// AI (frontend demo)
+function speak(t){
+ let u=new SpeechSynthesisUtterance(t);
+ speechSynthesis.speak(u);
+}
+function ai(){
+ speak("Yashirin coinlarni toping va boy bo‘ling");
+}
+
+// WEATHER (REAL API)
+async function loadWeather(lat,lng){
+ const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+ const res=await fetch(url);
+ const data=await res.json();
+
+ document.getElementById("weather").innerText=
+ "Temp: "+data.current_weather.temperature+"°C";
+}
+
+// LEADERBOARD (demo → DB ready)
+function loadLeaderboard(){
+ const data=[
+  {name:"Player1",score:1200},
+  {name:"Player2",score:900},
+  {name:"YOU",score:coins}
+ ];
+
+ document.getElementById("leaderboard").innerHTML=
+ data.map(u=>u.name+" - "+u.score).join("<br>");
+}
+</script>
 
 </body>
 </html>
