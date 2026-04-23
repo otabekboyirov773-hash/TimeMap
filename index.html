@@ -3,43 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap V26 WOW</title>
+<title>TimeMap V26.2 Investor</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
-body{margin:0;background:black;color:white;overflow:hidden;font-family:sans-serif}
-
-/* MAP */
+body{margin:0;background:black;color:white;font-family:sans-serif;overflow:hidden}
 #map{height:100vh;width:100%;transform:perspective(1000px) rotateX(5deg)}
 
 /* INTRO */
 #intro{
 position:fixed;inset:0;background:black;
-display:flex;flex-direction:column;
-align-items:center;justify-content:center;
+display:flex;flex-direction:column;align-items:center;justify-content:center;
 z-index:999;cursor:pointer;
-overflow:hidden;
 }
-
-#logo{
-width:140px;
-filter:drop-shadow(0 0 20px gold);
-animation:pulse 2s infinite;
-}
+#logo{width:140px;animation:pulse 2s infinite;filter:drop-shadow(0 0 20px gold)}
 @keyframes pulse{50%{transform:scale(1.1)}}
 
-/* PARTICLES */
+/* PARTICLE */
 .particle{
-position:absolute;
-width:4px;height:4px;
-background:gold;
-border-radius:50%;
+position:absolute;width:4px;height:4px;background:gold;border-radius:50%;
 }
 
-/* GLASS UI */
+/* GLASS */
 .glass{
 background:rgba(255,255,255,0.05);
 backdrop-filter:blur(20px);
@@ -49,16 +38,8 @@ box-shadow:0 0 30px rgba(0,255,255,0.2);
 
 /* COIN */
 .coin{
-width:18px;height:18px;
-border-radius:50%;
-background:gold;
-box-shadow:0 0 15px gold;
-}
-
-/* RADAR */
-@keyframes radar{
-from{transform:scale(0.5);opacity:1}
-to{transform:scale(1.5);opacity:0}
+width:18px;height:18px;border-radius:50%;
+background:gold;box-shadow:0 0 15px gold;
 }
 </style>
 </head>
@@ -68,45 +49,44 @@ to{transform:scale(1.5);opacity:0}
 <!-- INTRO -->
 <div id="intro" onclick="bigBang()">
 <img id="logo" src="https://cdn-icons-png.flaticon.com/512/854/854878.png">
-<p class="mt-6 text-yellow-400 tracking-widest text-xs">PORTALNI BOSING</p>
+<p class="mt-6 text-yellow-400 text-xs tracking-widest">PORTALNI BOSING</p>
 </div>
 
 <div id="map"></div>
 
 <!-- HUD -->
 <div class="fixed top-4 left-4 glass p-4 rounded-xl text-sm">
-💰 <span id="coins">0</span><br>
-💵 <span id="money">0</span><br>
-</div>
-
-<!-- AI -->
-<div class="fixed bottom-4 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-xs">
-🤖 <span id="ai">Tayyor...</span>
+💰 Coins: <span id="coins">0</span><br>
+💵 Pul: <span id="money">0</span><br>
+🎁 Bonus: <span id="bonus">--</span><br>
+🌤 <span id="weather">...</span><br>
 </div>
 
 <script>
-let map, coins=0, money=0;
+let map, coins=0, money=0, lastBonus=0;
+let shopMarker;
+
+// 🏪 SHOP (ER XOtin)
+const SHOP = {
+ name:"ER XOtin do'koni",
+ lat:41.311,
+ lng:69.279
+};
 
 // 💥 BIG BANG
 function bigBang(){
- const intro=document.getElementById("intro");
-
  for(let i=0;i<120;i++){
    let p=document.createElement("div");
    p.className="particle";
    p.style.left="50%";
    p.style.top="50%";
-
    document.body.appendChild(p);
 
-   let angle=Math.random()*360;
-   let dist=Math.random()*500;
+   let a=Math.random()*360;
+   let d=Math.random()*500;
 
    setTimeout(()=>{
-     p.style.transform=`translate(
-       ${Math.cos(angle)*dist}px,
-       ${Math.sin(angle)*dist}px
-     ) scale(2)`;
+     p.style.transform=`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`;
      p.style.opacity=0;
      p.style.transition="1s";
    },10);
@@ -114,9 +94,10 @@ function bigBang(){
    setTimeout(()=>p.remove(),1000);
  }
 
- intro.style.opacity=0;
+ document.getElementById("intro").style.opacity=0;
+
  setTimeout(()=>{
-   intro.remove();
+   document.getElementById("intro").remove();
    startApp();
  },800);
 }
@@ -143,40 +124,90 @@ function initMap(){
 
    spawnCoin(lat,lng);
    radar(lat,lng);
+   showShop(lat,lng);
+   loadWeather(lat,lng);
  });
 }
 
 // 🪙 COIN
 function spawnCoin(lat,lng){
  let c=L.marker([
-   lat+(Math.random()-0.5)/200,
-   lng+(Math.random()-0.5)/200
+  lat+(Math.random()-0.5)/200,
+  lng+(Math.random()-0.5)/200
  ],{icon:L.divIcon({className:"coin"})}).addTo(map);
 
  c.on("click",()=>{
-   coins+=10;
-   if(coins>=100){
-     money+=100;
-     coins=0;
-   }
-   update();
-   speak("Coin olindi");
-   map.removeLayer(c);
+  coins+=10;
+  if(coins>=100){
+    money+=100;
+    coins=0;
+  }
+  update();
+  speak("Coin olindi");
+  map.removeLayer(c);
  });
 }
 
+// 🎁 BONUS
+function updateBonus(){
+ let diff=86400000-(Date.now()-lastBonus);
+ if(diff<0) diff=0;
+ let h=Math.floor(diff/3600000);
+ document.getElementById("bonus").innerText=h+" soat";
+}
+setInterval(updateBonus,1000);
+
 // 📡 RADAR
 function radar(lat,lng){
- let r=L.circle([lat,lng],{
-   radius:100,color:"cyan"
- }).addTo(map);
-
+ let r=L.circle([lat,lng],{radius:100,color:"cyan"}).addTo(map);
  setTimeout(()=>map.removeLayer(r),1500);
+}
+
+// 📏 DISTANCE
+function distance(a,b,c,d){
+ let R=6371;
+ let dLat=(c-a)*Math.PI/180;
+ let dLon=(d-b)*Math.PI/180;
+
+ let x=
+ Math.sin(dLat/2)**2 +
+ Math.cos(a*Math.PI/180)*
+ Math.cos(c*Math.PI/180)*
+ Math.sin(dLon/2)**2;
+
+ return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+// 🏪 SHOW SHOP
+function showShop(lat,lng){
+ let dist=distance(lat,lng,SHOP.lat,SHOP.lng);
+
+ if(dist<=3){
+   if(!shopMarker){
+     shopMarker=L.marker([SHOP.lat,SHOP.lng])
+     .addTo(map)
+     .bindPopup("🛍 ER XOtin do'koni<br>Eng yaqin va arzon!");
+   }
+ } else {
+   if(shopMarker){
+     map.removeLayer(shopMarker);
+     shopMarker=null;
+   }
+ }
+}
+
+// 🌤 WEATHER
+function loadWeather(lat,lng){
+ fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`)
+ .then(r=>r.json())
+ .then(d=>{
+   document.getElementById("weather").innerText=
+   "🌤 "+d.current_weather.temperature+"°C";
+ });
 }
 
 // 🤖 AI
 function speak(t){
- document.getElementById("ai").innerText=t;
  let u=new SpeechSynthesisUtterance(t);
  u.lang="uz-UZ";
  speechSynthesis.speak(u);
