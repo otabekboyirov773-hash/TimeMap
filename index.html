@@ -1,95 +1,193 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TimeMap ULTRA V23 | Enterprise</title>
-    
-    <!-- 📦 KUTUBXONALAR -->
-    <script src="https://tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com" />
-    
-    <style>
-        /* 🎨 FAIL-SAFE CSS (Barcha dizayn shu yerda) */
-        :root { --gold: #FFD700; --neon: #00F3FF; }
-        body { background-color: black !important; color: white; margin: 0; overflow: hidden; font-family: sans-serif; }
-        
-        .glass {
-            background: rgba(13, 17, 23, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeMap V26 WOW</title>
 
-        #map { 
-            position: absolute; inset: 0; z-index: 0; 
-            background: #010409; transition: 1.2s;
-        }
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-        .map-3d { transform: perspective(1000px) rotateX(25deg) scale(1.05); }
+<style>
+body{margin:0;background:black;color:white;overflow:hidden;font-family:sans-serif}
 
-        #portal-intro {
-            position: fixed; inset: 0; z-index: 9999;
-            background: black; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; cursor: pointer;
-            transition: 1s;
-        }
+/* MAP */
+#map{height:100vh;width:100%;transform:perspective(1000px) rotateX(5deg)}
 
-        .explode { opacity: 0; pointer-events: none; transform: scale(1.5); }
+/* INTRO */
+#intro{
+position:fixed;inset:0;background:black;
+display:flex;flex-direction:column;
+align-items:center;justify-content:center;
+z-index:999;cursor:pointer;
+overflow:hidden;
+}
 
-        #main-logo { width: 200px; filter: drop-shadow(0 0 20px rgba(255,215,0,0.5)); animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-    </style>
+#logo{
+width:140px;
+filter:drop-shadow(0 0 20px gold);
+animation:pulse 2s infinite;
+}
+@keyframes pulse{50%{transform:scale(1.1)}}
+
+/* PARTICLES */
+.particle{
+position:absolute;
+width:4px;height:4px;
+background:gold;
+border-radius:50%;
+}
+
+/* GLASS UI */
+.glass{
+background:rgba(255,255,255,0.05);
+backdrop-filter:blur(20px);
+border:1px solid rgba(255,255,255,0.1);
+box-shadow:0 0 30px rgba(0,255,255,0.2);
+}
+
+/* COIN */
+.coin{
+width:18px;height:18px;
+border-radius:50%;
+background:gold;
+box-shadow:0 0 15px gold;
+}
+
+/* RADAR */
+@keyframes radar{
+from{transform:scale(0.5);opacity:1}
+to{transform:scale(1.5);opacity:0}
+}
+</style>
 </head>
+
 <body>
 
-    <!-- 🌌 BIG BANG INTRO -->
-    <div id="portal-intro" onclick="App.start()">
-        <img src="./assets/logo.png" id="main-logo" alt="TimeMap Logo">
-        <p style="margin-top: 20px; letter-spacing: 5px; color: var(--gold); font-size: 12px; text-transform: uppercase;">Portalni ochish uchun bosing</p>
-    </div>
+<!-- INTRO -->
+<div id="intro" onclick="bigBang()">
+<img id="logo" src="https://cdn-icons-png.flaticon.com/512/854/854878.png">
+<p class="mt-6 text-yellow-400 tracking-widest text-xs">PORTALNI BOSING</p>
+</div>
 
-    <!-- 🗺 XARITA -->
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- 💰 WALLET HUD -->
-    <div class="fixed top-6 right-6 z-50 glass px-6 py-2 rounded-2xl flex items-center gap-4 border border-yellow-500/20 shadow-2xl">
-        <div class="text-right">
-            <p style="font-size: 8px; opacity: 0.5; text-transform: uppercase;">Hamyon</p>
-            <b id="ui-balance" style="color: var(--gold); font-size: 18px;">500.00</b>
-        </div>
-        <div style="font-size: 24px;">🪙</div>
-    </div>
+<!-- HUD -->
+<div class="fixed top-4 left-4 glass p-4 rounded-xl text-sm">
+💰 <span id="coins">0</span><br>
+💵 <span id="money">0</span><br>
+</div>
 
-    <!-- 🧩 SKRIPTLAR -->
-    <script src="https://unpkg.com"></script>
-    <script src="https://jsdelivr.net"></script>
-    
-    <!-- App mantiqi (Faqat App.start ishlatamiz) -->
-    <script type="module">
-        import { CONFIG } from './config.js';
-        const supabase = window.supabase.createClient(CONFIG.SB_URL, CONFIG.SB_KEY);
-        let map;
+<!-- AI -->
+<div class="fixed bottom-4 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-xs">
+🤖 <span id="ai">Tayyor...</span>
+</div>
 
-        window.App = {
-            start: () => {
-                document.getElementById('portal-intro').classList.add('explode');
-                const msg = new SpeechSynthesisUtterance("Vaqt portaliga xush kelibsiz");
-                msg.lang = 'uz-UZ';
-                window.speechSynthesis.speak(msg);
-                
-                setTimeout(() => {
-                    document.getElementById('portal-intro').style.display = 'none';
-                    window.App.initMap();
-                }, 1000);
-            },
-            initMap: () => {
-                map = L.map('map', { zoomControl: false, attributionControl: false }).setView([41.5856, 64.2121], 15);
-                L.tileLayer('https://{s}://{z}/{x}/{y}{r}.png').addTo(map);
-                document.getElementById('map').classList.add('map-3d');
-                setTimeout(() => map.invalidateSize(), 500);
-            }
-        };
-    </script>
+<script>
+let map, coins=0, money=0;
+
+// 💥 BIG BANG
+function bigBang(){
+ const intro=document.getElementById("intro");
+
+ for(let i=0;i<120;i++){
+   let p=document.createElement("div");
+   p.className="particle";
+   p.style.left="50%";
+   p.style.top="50%";
+
+   document.body.appendChild(p);
+
+   let angle=Math.random()*360;
+   let dist=Math.random()*500;
+
+   setTimeout(()=>{
+     p.style.transform=`translate(
+       ${Math.cos(angle)*dist}px,
+       ${Math.sin(angle)*dist}px
+     ) scale(2)`;
+     p.style.opacity=0;
+     p.style.transition="1s";
+   },10);
+
+   setTimeout(()=>p.remove(),1000);
+ }
+
+ intro.style.opacity=0;
+ setTimeout(()=>{
+   intro.remove();
+   startApp();
+ },800);
+}
+
+// 🚀 START
+function startApp(){
+ initMap();
+ speak("TimeMap ga xush kelibsiz");
+}
+
+// 🗺 MAP
+function initMap(){
+ map=L.map('map').setView([41.31,69.27],13);
+
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
+ .addTo(map);
+
+ navigator.geolocation.watchPosition(pos=>{
+   let lat=pos.coords.latitude;
+   let lng=pos.coords.longitude;
+
+   L.marker([lat,lng]).addTo(map);
+   map.setView([lat,lng],15);
+
+   spawnCoin(lat,lng);
+   radar(lat,lng);
+ });
+}
+
+// 🪙 COIN
+function spawnCoin(lat,lng){
+ let c=L.marker([
+   lat+(Math.random()-0.5)/200,
+   lng+(Math.random()-0.5)/200
+ ],{icon:L.divIcon({className:"coin"})}).addTo(map);
+
+ c.on("click",()=>{
+   coins+=10;
+   if(coins>=100){
+     money+=100;
+     coins=0;
+   }
+   update();
+   speak("Coin olindi");
+   map.removeLayer(c);
+ });
+}
+
+// 📡 RADAR
+function radar(lat,lng){
+ let r=L.circle([lat,lng],{
+   radius:100,color:"cyan"
+ }).addTo(map);
+
+ setTimeout(()=>map.removeLayer(r),1500);
+}
+
+// 🤖 AI
+function speak(t){
+ document.getElementById("ai").innerText=t;
+ let u=new SpeechSynthesisUtterance(t);
+ u.lang="uz-UZ";
+ speechSynthesis.speak(u);
+}
+
+// UI
+function update(){
+ document.getElementById("coins").innerText=coins;
+ document.getElementById("money").innerText=money;
+}
+</script>
+
 </body>
 </html>
