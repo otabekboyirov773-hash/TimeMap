@@ -4,8 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>TimeMap V150 CINEMATIC</title>
+<title>TimeMap ULTRA</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -13,90 +12,12 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-body{
- margin:0;
- background:#000;
- color:white;
- font-family:Segoe UI;
- overflow:hidden;
-}
+body{margin:0;background:black;color:white;overflow:hidden;font-family:Segoe UI;}
+#map{position:absolute;inset:0;z-index:1;}
 
-#map{
- position:absolute;
- inset:0;
- z-index:1;
-}
-
-/* GLASS */
-.glass{
- background:rgba(20,20,30,0.6);
- backdrop-filter:blur(30px);
- border-radius:25px;
- border:1px solid rgba(255,255,255,0.1);
-}
-
-/* TOP BAR */
-.topbar{
- position:fixed;
- top:20px;
- left:50%;
- transform:translateX(-50%);
- z-index:999;
-}
-
-/* WEATHER */
-.weather{
- position:fixed;
- top:90px;
- left:50%;
- transform:translateX(-50%);
- z-index:999;
- padding:15px 25px;
- text-align:center;
-}
-
-/* AI PANEL */
-.ai{
- position:fixed;
- bottom:120px;
- left:20px;
- z-index:999;
- width:220px;
- padding:15px;
-}
-
-/* TIME */
-.timeline{
- position:fixed;
- bottom:30px;
- left:50%;
- transform:translateX(-50%);
- z-index:999;
- width:80%;
- padding:10px;
-}
-
-/* BUTTON */
-.btn{
- background:linear-gradient(135deg,#00F3FF,#BC00FF);
- padding:6px 12px;
- border-radius:20px;
-}
-
-/* SEARCH */
-.search{
- width:250px;
- padding:8px;
- border-radius:20px;
- border:none;
- background:rgba(255,255,255,0.05);
- color:white;
-}
-
-/* FADE INTRO */
+/* INTRO */
 #intro{
- position:fixed;
- inset:0;
+ position:fixed;inset:0;
  background:black;
  display:flex;
  align-items:center;
@@ -104,7 +25,26 @@ body{
  flex-direction:column;
  z-index:9999;
  cursor:pointer;
- transition:1s;
+}
+
+canvas{
+ position:absolute;
+}
+
+/* UI */
+.glass{
+ background:rgba(20,20,30,0.6);
+ backdrop-filter:blur(30px);
+ border-radius:20px;
+ padding:10px;
+}
+
+.ui{position:fixed;z-index:999;}
+
+.btn{
+ background:linear-gradient(135deg,#00F3FF,#BC00FF);
+ padding:6px 12px;
+ border-radius:20px;
 }
 </style>
 
@@ -112,136 +52,101 @@ body{
 
 <body>
 
-<div id="intro" onclick="App.start()">
- <h1 style="font-size:40px;color:#00F3FF;">TIMEMAP</h1>
- <p>Touch to Enter</p>
+<div id="intro">
+ <canvas id="earth"></canvas>
+ <p style="margin-top:200px;">Bosish → yangi dunyo</p>
 </div>
 
 <div id="map"></div>
 
 <!-- TOP -->
 
-<div class="topbar glass px-4 py-2 flex gap-3 items-center">
-<input id="search" class="search" placeholder="AI qidiruv...">
-<button onclick="App.aiSearch()" class="btn">AI</button>
+<div class="ui top-5 left-1/2 -translate-x-1/2 glass flex gap-3">
 <div>🪙 <span id="coin">100</span></div>
 <button onclick="App.toggle()" class="btn">🛰</button>
 </div>
 
-<!-- WEATHER -->
-
-<div class="weather glass">
-<div id="temp">--°C</div>
-<div id="desc">Loading...</div>
-</div>
-
-<!-- AI -->
-
-<div class="ai glass">
-<p style="color:#00F3FF;font-size:12px;">AI Assistant</p>
-<p id="aiText" style="font-size:12px;">Ready...</p>
-<button onclick="App.scan()" class="btn w-full mt-2">Scan</button>
-</div>
-
-<!-- TIME -->
-
-<div class="timeline glass">
-<span id="year">2024</span>
-<input type="range" min="1400" max="2100" value="2024"
-oninput="App.time(this.value)" style="width:100%">
-</div>
-
 <script>
-let map, markers=[];
-let coin=100, isSat=false;
+let canvas=document.getElementById("earth");
+let ctx=canvas.getContext("2d");
 
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let particles=[];
+
+// EARTH DRAW
+function drawEarth(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ ctx.beginPath();
+ ctx.arc(canvas.width/2,canvas.height/2,100,0,Math.PI*2);
+ ctx.fillStyle="#00F3FF";
+ ctx.fill();
+}
+
+// PARTICLES
+function explode(){
+ particles=[];
+ for(let i=0;i<200;i++){
+  particles.push({
+   x:canvas.width/2,
+   y:canvas.height/2,
+   vx:(Math.random()-0.5)*10,
+   vy:(Math.random()-0.5)*10
+  });
+ }
+}
+
+function animate(){
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ particles.forEach(p=>{
+  p.x+=p.vx;
+  p.y+=p.vy;
+  ctx.fillRect(p.x,p.y,3,3);
+ });
+ requestAnimationFrame(animate);
+}
+
+function gather(){
+ particles.forEach(p=>{
+  p.vx+=(canvas.width/2-p.x)/100;
+  p.vy+=(canvas.height/2-p.y)/100;
+ });
+}
+
+// CLICK
+document.getElementById("intro").onclick=()=>{
+ explode();
+ animate();
+
+ setTimeout(()=>{
+  gather();
+ },800);
+
+ setTimeout(()=>{
+  document.getElementById("intro").style.opacity=0;
+  setTimeout(()=>document.getElementById("intro").remove(),500);
+  App.init();
+  App.speak("Xush kelibsiz. Yangi dunyoni kashf qiling");
+ },2000);
+};
+
+// MAP
+let map,isSat=false;
 const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-const historyData=[
- {lat:41.31,lng:69.24,year:1800,text:"Qadimiy markaz"},
- {lat:41.32,lng:69.23,year:1500,text:"Qal’a"}
-];
-
 const App={
-
-start(){
- document.getElementById("intro").style.opacity=0;
- setTimeout(()=>document.getElementById("intro").remove(),800);
-
- this.speak("Xush kelibsiz. Yangi dunyoni kashf qiling");
- this.init();
-},
 
 init(){
  map=L.map('map').setView([41.31,69.24],15);
  street.addTo(map);
- this.locate();
-},
-
-locate(){
- navigator.geolocation.getCurrentPosition(pos=>{
-  let lat=pos.coords.latitude;
-  let lng=pos.coords.longitude;
-
-  map.setView([lat,lng],16);
-  L.marker([lat,lng]).addTo(map);
-
-  this.getWeather(lat,lng);
- });
-},
-
-async getWeather(lat,lng){
- let r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
- let d=await r.json();
-
- document.getElementById("temp").innerText=d.current_weather.temperature+"°C";
- document.getElementById("desc").innerText="Clear";
-},
-
-aiSearch(){
- let q=document.getElementById("search").value;
-
- if(q.includes("tarix")) this.time(1800);
- this.speak("Natija tayyor");
-},
-
-time(y){
- document.getElementById("year").innerText=y;
- this.clear();
-
- if(y<1900){
-  document.body.style.filter="sepia(0.6)";
-  historyData.forEach(p=>{
-   if(p.year<=y){
-    let m=L.marker([p.lat,p.lng])
-     .addTo(map)
-     .on('click',()=>this.speak(p.text));
-    markers.push(m);
-   }
-  });
- } else document.body.style.filter="none";
 },
 
 toggle(){
  isSat=!isSat;
  if(isSat){map.removeLayer(street);sat.addTo(map);}
  else{map.removeLayer(sat);street.addTo(map);}
-},
-
-scan(){
- this.addCoin(10);
- this.speak("Scan bajarildi");
-},
-
-addCoin(v){
- coin+=v;
- document.getElementById("coin").innerText=coin;
-},
-
-clear(){
- markers.forEach(m=>map.removeLayer(m));
- markers=[];
 },
 
 speak(t){
@@ -251,6 +156,9 @@ speak(t){
 }
 
 };
+
+// INITIAL
+drawEarth();
 </script>
 
 </body>
