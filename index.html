@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap V100 NEXT LEVEL</title>
+<title>TimeMap V110 ULTRA</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -37,23 +37,9 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
  font-size:11px;
 }
 
-.sidebar{
- width:70px;
- display:flex;
- flex-direction:column;
- gap:15px;
- align-items:center;
- padding:10px;
-}
-
-.sidebar div{
- cursor:pointer;
- font-size:18px;
-}
-
 .search{
- width:220px;
- padding:8px;
+ width:200px;
+ padding:6px;
  border-radius:20px;
  background:rgba(255,255,255,0.05);
  border:none;
@@ -67,28 +53,19 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
 
 <div id="map"></div>
 
-<!-- SIDEBAR -->
+<!-- TOP -->
 
-<div class="ui top-5 left-3 glass sidebar">
-<div onclick="App.filter('hotel')">🏨</div>
-<div onclick="App.filter('food')">🍔</div>
-<div onclick="App.filter('history')">🏛</div>
-<div onclick="App.showAll()">🌍</div>
-</div>
-
-<!-- TOP BAR -->
-
-<div class="ui top-5 left-1/2 -translate-x-1/2 glass px-4 py-2 flex gap-3 items-center">
+<div class="ui top-5 left-1/2 -translate-x-1/2 glass px-4 py-2 flex gap-3">
 <input class="search" placeholder="Qidir...">
 <div>🪙 <span id="coin">100</span></div>
+<button onclick="App.toggle()" class="btn">🛰</button>
 </div>
 
 <!-- WEATHER -->
 
-<div class="ui top-16 right-3 glass p-3 w-40 text-xs">
-<p>🌦 Ob-havo</p>
-<p id="temp">--°C</p>
-<p id="wind">-- km/h</p>
+<div class="ui top-16 right-3 glass p-3 text-xs">
+<p>🌦</p>
+<p id="temp">--</p>
 <p id="desc">--</p>
 </div>
 
@@ -100,13 +77,12 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
 <button onclick="App.scan()" class="btn mt-2 w-full">Scan</button>
 </div>
 
-<!-- BOTTOM NAV -->
+<!-- YEAR -->
 
-<div class="ui bottom-3 left-1/2 -translate-x-1/2 glass flex gap-5 px-6 py-2">
-<div>🏠</div>
-<div>🗺</div>
-<div>❤️</div>
-<div>👤</div>
+<div class="ui bottom-5 left-1/2 -translate-x-1/2 glass p-3 flex gap-2 items-center">
+<span id="yearLabel">2024</span>
+<input type="range" min="1400" max="2100" value="2024"
+oninput="App.time(this.value)">
 </div>
 
 <script>
@@ -117,10 +93,10 @@ let isSat=false;
 const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-const places=[
- {type:"hotel",name:"Hotel",lat:41.31,lng:69.24,year:2024,reward:20},
- {type:"food",name:"Food",lat:41.312,lng:69.25,year:2024,reward:15},
- {type:"history",name:"History",lat:41.313,lng:69.23,year:1800,reward:30}
+// TARIX DATA
+const historyData=[
+ {name:"Qadimiy Bozor",lat:41.31,lng:69.24,year:1800,story:"Bu yer qadimiy savdo markazi bo‘lgan"},
+ {name:"Qal'a",lat:41.312,lng:69.23,year:1500,story:"Bu yer himoya qal’asi edi"}
 ];
 
 const App={
@@ -129,47 +105,29 @@ init(){
  map=L.map('map').setView([41.31,69.24],15);
  street.addTo(map);
  this.locate();
- this.updateCoin();
 },
 
 locate(){
  navigator.geolocation.getCurrentPosition(pos=>{
-  const lat=pos.coords.latitude;
-  const lng=pos.coords.longitude;
+  let lat=pos.coords.latitude;
+  let lng=pos.coords.longitude;
 
   map.setView([lat,lng],16);
 
-  L.marker([lat,lng]).addTo(map)
-   .bindPopup("Siz shu yerdasiz");
-
+  L.marker([lat,lng]).addTo(map).bindPopup("Siz shu yerdasiz");
   L.circle([lat,lng],{radius:3000,color:'#00F3FF'}).addTo(map);
 
-  this.showAll();
   this.getWeather(lat,lng);
+  this.showCurrent();
  });
 },
 
-// WEATHER API
+// WEATHER
 async getWeather(lat,lng){
- try{
-  let url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
-  let res=await fetch(url);
-  let data=await res.json();
-
-  document.getElementById("temp").innerText=data.current_weather.temperature+"°C";
-  document.getElementById("wind").innerText=data.current_weather.windspeed+" km/h";
-
-  let code=data.current_weather.weathercode;
-  let desc="Clear";
-
-  if(code>2) desc="Bulutli";
-  if(code>60) desc="Yomg'ir";
-
-  document.getElementById("desc").innerText=desc;
-
- }catch(e){
-  console.log("Weather error",e);
- }
+ let res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
+ let data=await res.json();
+ document.getElementById("temp").innerText=data.current_weather.temperature+"°C";
+ document.getElementById("desc").innerText="Live";
 },
 
 clear(){
@@ -177,41 +135,48 @@ clear(){
  markers=[];
 },
 
-showAll(){
+showCurrent(){
  this.clear();
- places.forEach(p=>{
-  let m=L.marker([p.lat,p.lng])
-   .addTo(map)
-   .bindPopup(p.name)
-   .on('click',()=>this.addCoin(p.reward));
-  markers.push(m);
- });
 },
 
-filter(type){
+time(y){
+ document.getElementById("yearLabel").innerText=y;
  this.clear();
- places.forEach(p=>{
-  if(p.type===type){
-   let m=L.marker([p.lat,p.lng])
-    .addTo(map)
-    .bindPopup(p.name)
-    .on('click',()=>this.addCoin(p.reward));
-   markers.push(m);
-  }
- });
+
+ if(y<1900){
+  document.body.style.filter="sepia(0.6)";
+  historyData.forEach(p=>{
+   if(p.year<=y){
+    let m=L.marker([p.lat,p.lng])
+     .addTo(map)
+     .bindPopup(p.name)
+     .on('click',()=>this.speak(p.story));
+    markers.push(m);
+   }
+  });
+ } else {
+  document.body.style.filter="none";
+ }
+},
+
+toggle(){
+ isSat=!isSat;
+ if(isSat){
+  map.removeLayer(street);
+  sat.addTo(map);
+ } else {
+  map.removeLayer(sat);
+  street.addTo(map);
+ }
 },
 
 scan(){
  this.addCoin(10);
- this.speak("Bonus berildi");
+ this.speak("Yangi tarixiy joylar topildi");
 },
 
 addCoin(v){
  coin+=v;
- this.updateCoin();
-},
-
-updateCoin(){
  document.getElementById("coin").innerText=coin;
 },
 
