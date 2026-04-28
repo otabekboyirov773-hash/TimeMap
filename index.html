@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap V120 ULTRA</title>
+<title>TimeMap V130 ULTRA</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -25,16 +25,12 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;overflow:hidden;}
 
 /* BIG BANG */
 #intro{
- position:fixed;inset:0;
- background:black;
+ position:fixed;inset:0;background:black;
  display:flex;align-items:center;justify-content:center;
- flex-direction:column;
- z-index:9999;
- cursor:pointer;
+ flex-direction:column;z-index:9999;cursor:pointer;
 }
 #logo{
- font-size:40px;
- color:#00F3FF;
+ font-size:40px;color:#00F3FF;
  animation:pulse 2s infinite alternate;
 }
 @keyframes pulse{
@@ -42,32 +38,31 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;overflow:hidden;}
  to{transform:scale(1.2)}
 }
 
+/* WEATHER CARD */
+.weather{
+ background:linear-gradient(135deg,#00F3FF,#BC00FF);
+ padding:12px;border-radius:20px;
+ color:white;width:140px;
+ box-shadow:0 0 20px rgba(0,243,255,0.5);
+}
+
 /* GLASS */
 .glass{
  background:var(--glass);
  backdrop-filter:blur(25px);
- border:1px solid rgba(0,243,255,0.2);
  border-radius:20px;
 }
 
 /* BUTTON */
 .btn{
- background:linear-gradient(135deg,var(--neon),var(--purple));
- padding:6px 12px;
- border-radius:20px;
+ background:linear-gradient(135deg,#00F3FF,#BC00FF);
+ padding:6px 12px;border-radius:20px;
 }
 
-/* PARTICLES */
-#stars{
- position:fixed;
- inset:0;
- background:url('https://www.transparenttextures.com/patterns/stardust.png');
- opacity:0.2;
- animation:move 20s linear infinite;
-}
-@keyframes move{
- from{background-position:0 0}
- to{background-position:1000px 1000px}
+.search{
+ padding:8px;border-radius:20px;
+ background:rgba(255,255,255,0.05);
+ border:none;color:white;width:200px;
 }
 </style>
 
@@ -75,25 +70,27 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;overflow:hidden;}
 
 <body>
 
+<!-- INTRO -->
+
 <div id="intro" onclick="App.start()">
  <div id="logo">TIMEMAP</div>
  <p>Portalni ochish uchun bosing</p>
 </div>
 
-<div id="stars"></div>
 <div id="map"></div>
 
 <!-- TOP -->
 
 <div class="ui top-5 left-1/2 -translate-x-1/2 glass px-4 py-2 flex gap-3">
-<input placeholder="Qidir..." style="background:none;border:none;color:white">
+<input id="search" class="search" placeholder="AI qidiruv...">
+<button onclick="App.aiSearch()" class="btn">AI</button>
 <div>🪙 <span id="coin">100</span></div>
 <button onclick="App.toggle()" class="btn">🛰</button>
 </div>
 
 <!-- WEATHER -->
 
-<div class="ui top-16 right-3 glass p-3 text-xs">
+<div class="ui top-16 right-3 weather text-xs">
 <p id="temp">--°C</p>
 <p id="desc">--</p>
 </div>
@@ -121,15 +118,20 @@ let coin=100, isSat=false;
 const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
+const places=[
+ {type:"hotel",name:"Hotel",lat:41.31,lng:69.24},
+ {type:"food",name:"Restoran",lat:41.312,lng:69.25}
+];
+
 const historyData=[
- {name:"Bozor",lat:41.31,lng:69.24,year:1800,story:"Bu yer savdo markazi"},
- {name:"Qal'a",lat:41.32,lng:69.23,year:1500,story:"Bu yer qal’a edi"}
+ {name:"Qadimiy joy",lat:41.313,lng:69.23,year:1800,story:"Bu yer tarixiy markaz"}
 ];
 
 const App={
 
 start(){
  document.getElementById("intro").style.display="none";
+ this.speak("Xush kelibsiz. Biz bilan yangi dunyoni kashf qiling");
  this.init();
 },
 
@@ -146,9 +148,8 @@ locate(){
 
   map.setView([lat,lng],16);
   L.marker([lat,lng]).addTo(map);
-  L.circle([lat,lng],{radius:3000,color:'#00F3FF'}).addTo(map);
-
   this.getWeather(lat,lng);
+  this.showAll();
  });
 },
 
@@ -159,29 +160,48 @@ async getWeather(lat,lng){
  document.getElementById("desc").innerText="Live";
 },
 
+showAll(){
+ this.clear();
+ places.forEach(p=>{
+  let m=L.marker([p.lat,p.lng]).addTo(map)
+   .bindPopup(p.name);
+  markers.push(m);
+ });
+},
+
+aiSearch(){
+ let q=document.getElementById("search").value.toLowerCase();
+
+ if(q.includes("hotel")) this.filter("hotel");
+ else if(q.includes("ovqat")) this.filter("food");
+ else if(q.includes("tarix")) this.time(1800);
+
+ this.speak("Natijalar chiqarildi");
+},
+
+filter(type){
+ this.clear();
+ places.forEach(p=>{
+  if(p.type===type){
+   let m=L.marker([p.lat,p.lng]).addTo(map);
+   markers.push(m);
+  }
+ });
+},
+
 time(y){
  document.getElementById("yearLabel").innerText=y;
  this.clear();
 
  if(y<1900){
-  document.body.style.filter="sepia(0.7)";
+  document.body.style.filter="sepia(0.6)";
   historyData.forEach(p=>{
-   if(p.year<=y){
-    let m=L.marker([p.lat,p.lng])
-     .addTo(map)
-     .bindPopup(p.name)
-     .on('click',()=>this.speak(p.story));
-    markers.push(m);
-   }
+   let m=L.marker([p.lat,p.lng])
+    .addTo(map)
+    .on('click',()=>this.speak(p.story));
+   markers.push(m);
   });
- } else {
-  document.body.style.filter="none";
- }
-},
-
-clear(){
- markers.forEach(m=>map.removeLayer(m));
- markers=[];
+ } else document.body.style.filter="none";
 },
 
 toggle(){
@@ -193,7 +213,7 @@ toggle(){
 scan(){
  this.flash();
  this.addCoin(10);
- this.speak("Yangi joylar topildi");
+ this.speak("Bonus berildi");
 },
 
 flash(){
@@ -204,6 +224,11 @@ flash(){
 addCoin(v){
  coin+=v;
  document.getElementById("coin").innerText=coin;
+},
+
+clear(){
+ markers.forEach(m=>map.removeLayer(m));
+ markers=[];
 },
 
 speak(t){
