@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TimeMap V110 ULTRA</title>
+<title>TimeMap V120 ULTRA</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 
@@ -18,11 +18,31 @@
  --glass:rgba(10,10,25,0.85);
 }
 
-body{margin:0;background:#000;color:white;font-family:Segoe UI;}
+body{margin:0;background:#000;color:white;font-family:Segoe UI;overflow:hidden;}
 #map{position:absolute;inset:0;z-index:1;}
 
 .ui{position:fixed;z-index:999;}
 
+/* BIG BANG */
+#intro{
+ position:fixed;inset:0;
+ background:black;
+ display:flex;align-items:center;justify-content:center;
+ flex-direction:column;
+ z-index:9999;
+ cursor:pointer;
+}
+#logo{
+ font-size:40px;
+ color:#00F3FF;
+ animation:pulse 2s infinite alternate;
+}
+@keyframes pulse{
+ from{transform:scale(1)}
+ to{transform:scale(1.2)}
+}
+
+/* GLASS */
 .glass{
  background:var(--glass);
  backdrop-filter:blur(25px);
@@ -30,20 +50,24 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
  border-radius:20px;
 }
 
+/* BUTTON */
 .btn{
  background:linear-gradient(135deg,var(--neon),var(--purple));
  padding:6px 12px;
  border-radius:20px;
- font-size:11px;
 }
 
-.search{
- width:200px;
- padding:6px;
- border-radius:20px;
- background:rgba(255,255,255,0.05);
- border:none;
- color:white;
+/* PARTICLES */
+#stars{
+ position:fixed;
+ inset:0;
+ background:url('https://www.transparenttextures.com/patterns/stardust.png');
+ opacity:0.2;
+ animation:move 20s linear infinite;
+}
+@keyframes move{
+ from{background-position:0 0}
+ to{background-position:1000px 1000px}
 }
 </style>
 
@@ -51,12 +75,18 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
 
 <body>
 
+<div id="intro" onclick="App.start()">
+ <div id="logo">TIMEMAP</div>
+ <p>Portalni ochish uchun bosing</p>
+</div>
+
+<div id="stars"></div>
 <div id="map"></div>
 
 <!-- TOP -->
 
 <div class="ui top-5 left-1/2 -translate-x-1/2 glass px-4 py-2 flex gap-3">
-<input class="search" placeholder="Qidir...">
+<input placeholder="Qidir..." style="background:none;border:none;color:white">
 <div>🪙 <span id="coin">100</span></div>
 <button onclick="App.toggle()" class="btn">🛰</button>
 </div>
@@ -64,8 +94,7 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
 <!-- WEATHER -->
 
 <div class="ui top-16 right-3 glass p-3 text-xs">
-<p>🌦</p>
-<p id="temp">--</p>
+<p id="temp">--°C</p>
 <p id="desc">--</p>
 </div>
 
@@ -73,13 +102,13 @@ body{margin:0;background:#000;color:white;font-family:Segoe UI;}
 
 <div class="ui bottom-24 left-3 glass p-3 w-52">
 <p class="text-cyan-400 text-xs">AI</p>
-<p id="aiText" class="text-xs">Tayyor...</p>
-<button onclick="App.scan()" class="btn mt-2 w-full">Scan</button>
+<p id="aiText">Tayyor...</p>
+<button onclick="App.scan()" class="btn w-full mt-2">Scan</button>
 </div>
 
 <!-- YEAR -->
 
-<div class="ui bottom-5 left-1/2 -translate-x-1/2 glass p-3 flex gap-2 items-center">
+<div class="ui bottom-5 left-1/2 -translate-x-1/2 glass p-3">
 <span id="yearLabel">2024</span>
 <input type="range" min="1400" max="2100" value="2024"
 oninput="App.time(this.value)">
@@ -87,19 +116,22 @@ oninput="App.time(this.value)">
 
 <script>
 let map, markers=[];
-let coin=100;
-let isSat=false;
+let coin=100, isSat=false;
 
 const street=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
 const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
 
-// TARIX DATA
 const historyData=[
- {name:"Qadimiy Bozor",lat:41.31,lng:69.24,year:1800,story:"Bu yer qadimiy savdo markazi bo‘lgan"},
- {name:"Qal'a",lat:41.312,lng:69.23,year:1500,story:"Bu yer himoya qal’asi edi"}
+ {name:"Bozor",lat:41.31,lng:69.24,year:1800,story:"Bu yer savdo markazi"},
+ {name:"Qal'a",lat:41.32,lng:69.23,year:1500,story:"Bu yer qal’a edi"}
 ];
 
 const App={
+
+start(){
+ document.getElementById("intro").style.display="none";
+ this.init();
+},
 
 init(){
  map=L.map('map').setView([41.31,69.24],15);
@@ -113,30 +145,18 @@ locate(){
   let lng=pos.coords.longitude;
 
   map.setView([lat,lng],16);
-
-  L.marker([lat,lng]).addTo(map).bindPopup("Siz shu yerdasiz");
+  L.marker([lat,lng]).addTo(map);
   L.circle([lat,lng],{radius:3000,color:'#00F3FF'}).addTo(map);
 
   this.getWeather(lat,lng);
-  this.showCurrent();
  });
 },
 
-// WEATHER
 async getWeather(lat,lng){
- let res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
- let data=await res.json();
- document.getElementById("temp").innerText=data.current_weather.temperature+"°C";
+ let r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
+ let d=await r.json();
+ document.getElementById("temp").innerText=d.current_weather.temperature+"°C";
  document.getElementById("desc").innerText="Live";
-},
-
-clear(){
- markers.forEach(m=>map.removeLayer(m));
- markers=[];
-},
-
-showCurrent(){
- this.clear();
 },
 
 time(y){
@@ -144,7 +164,7 @@ time(y){
  this.clear();
 
  if(y<1900){
-  document.body.style.filter="sepia(0.6)";
+  document.body.style.filter="sepia(0.7)";
   historyData.forEach(p=>{
    if(p.year<=y){
     let m=L.marker([p.lat,p.lng])
@@ -159,20 +179,26 @@ time(y){
  }
 },
 
+clear(){
+ markers.forEach(m=>map.removeLayer(m));
+ markers=[];
+},
+
 toggle(){
  isSat=!isSat;
- if(isSat){
-  map.removeLayer(street);
-  sat.addTo(map);
- } else {
-  map.removeLayer(sat);
-  street.addTo(map);
- }
+ if(isSat){map.removeLayer(street);sat.addTo(map);}
+ else{map.removeLayer(sat);street.addTo(map);}
 },
 
 scan(){
+ this.flash();
  this.addCoin(10);
- this.speak("Yangi tarixiy joylar topildi");
+ this.speak("Yangi joylar topildi");
+},
+
+flash(){
+ document.body.style.filter="brightness(1.5)";
+ setTimeout(()=>document.body.style.filter="none",200);
 },
 
 addCoin(v){
@@ -187,8 +213,6 @@ speak(t){
 }
 
 };
-
-App.init();
 </script>
 
 </body>
